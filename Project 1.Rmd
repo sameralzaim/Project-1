@@ -1,0 +1,649 @@
+---
+title: 'Deep Dive Into Loan Default Data to Acess Default Drivers'
+author: "Samer Alzaim"
+date: "West Chester University "
+output:
+  html_document: 
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+    number_sections: yes
+    toc_collapsed: yes
+    code_folding: hide
+    code_download: yes
+    smooth_scroll: yes
+    theme: spacelab
+  word_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    keep_md: yes
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    number_sections: yes
+    fig_width: 3
+    fig_height: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{=html}
+
+<style type="text/css">
+
+/* Cascading Style Sheets (CSS) is a stylesheet language used to describe the presentation of a document written in HTML or XML. it is a simple mechanism for adding style (e.g., fonts, colors, spacing) to Web documents. */
+
+h1.title {  /* Title - font specifications of the report title */
+  font-size: 24px;
+  font-weight: bold;
+  color: navy;
+  text-align: center;
+  font-family: "Arial", Arial;
+}
+h4.author { /* Header 4 - font specifications for authors  */
+  font-size: 18px;
+  font-family: system-ui;
+  font-weight: bold;
+  color: navy;
+  text-align: center;
+}
+h4.date { /* Header 4 - font specifications for the date  */
+  font-size: 18px;
+  font-family: system-ui;
+  color: DarkBlue;
+  text-align: center;
+  font-weight: bold;
+}
+h1 { /* Header 1 - font specifications for level 1 section title  */
+    font-size: 20px;
+    font-family: "Arial", Arial, Arial;
+    color: navy;
+    text-align: left;
+    font-weight: bold;
+}
+h2 { /* Header 2 - font specifications for level 2 section title */
+    font-size: 18px;
+    font-family: "Arial", Arial, Arial;
+    color: navy;
+    text-align: left;
+    font-weight: bold;
+}
+
+h3 { /* Header 3 - font specifications of level 3 section title  */
+    font-size: 16px;
+    font-family: "Arial", Arial, Arial;
+    color: navy;
+    text-align: left;
+}
+
+h4 { /* Header 4 - font specifications of level 4 section title  */
+    font-size: 14px;
+    font-family: "Arial", Arial, Arial;
+    color: darkred;
+    text-align: left;
+}
+
+body { background-color:white; }
+
+.highlightme { background-color:yellow; }
+
+p { background-color:white; }
+
+</style>
+```
+
+
+
+```{r setup, include=FALSE}
+# code chunk specifies whether the R code, warnings, and output 
+# will be included in the output files.
+if (!require("knitr")) {
+   install.packages("knitr")
+   library(knitr)
+}
+if (!require("tidyverse")) {
+   install.packages("tidyverse")
+library(tidyverse)
+}
+if (!require("kernlab")) { # SVM methodology
+   install.packages("kernlab")
+library(kernlab)
+}
+if (!require("e1071")) { # SVM methodology
+   install.packages("e1071")
+library(e1071)
+}
+if (!require("ISLR")) { # contains example data set "Khan"
+   install.packages("ISLR")
+library(ISLR)
+}
+if (!require("RColorBrewer")) { # customized coloring of plots
+   install.packages("RColorBrewer")
+library(RColorBrewer)
+}
+if (!require("VIM")) { # SVM methodology
+   install.packages("VIM")
+library(VIM)
+}
+if (!require("mice")) { # SVM methodology
+   install.packages("mice")
+library(mice)
+}
+if (!require("ggpubr")) { # SVM methodology
+   install.packages("ggpubr")
+library(ggpubr)
+}
+knitr::opts_chunk$set(echo = TRUE,       # include code chunk in the output file
+                      warning = FALSE,   # sometimes, you code may produce warning messages,
+                                         # you can choose to include the warning messages in
+                                         # the output file. 
+                      results = TRUE,    # you can also decide whether to include the output
+                                         # in the output file.
+                      message = FALSE,
+                      comment = NA)  
+```
+
+# Introduction
+  + *Loan Default Data* - aim at analyzing loan default trends and attributes in order to enhance future loans underwriting.
+  + *Data Collection Process* - Process of generating the data is unknown,however, it is most likely collected from lending company nor from credit bureau.
+    
+## Description of Data
+
+  + *Data Structure* - dataset contains 1000 observations with 16 categorical and numerical variables. 
+  + *Itemized List of Feature Variables*:
+  
+    - Default               Categorical   Variable indicates whether the account is on good standing or not
+    - Checking_amount       Numerical     Checking Account Balance 
+    - Term                  Numerical     Loan Term
+    - Credit_score          Numerical     Customer Credit Score
+    - Gender                Categorical   Customer Gender
+    - Marital_status        Categorical   Customer Marital Status 
+    - Car_loan              Categorical   Indicator for Personal loan (1 yes, 0 No)
+    - Personal_loan         Categorical   Indicator for Personal loan (1 yes, 0 No)
+    - Home_loan             Categorical   Indicator for Home loan (1 yes, 0 No)
+    - Education_loan        Categorical   Indicator for student loan (1 yes, 0 No)
+    - Emp_status            Categorical   Employment status (1 employed, 0       Notemployed)
+    - Amount                Numerical     Loan Amount       
+    - Saving_amount         Numerical     Saving Amount
+    - Emp_duration          Numerical     Number of years employed
+    - Age                   Numerical     Customer Age
+    - No_of_credit_acc      Numerical     No of loans the custom have
+    
+
+
+  
+## Purposes of Using This Data Set
+
+  + Look into visual presentation of data to provide better understand of it and highlight insights into the outcome that can be driven from the data.
+  
+ <font color = "red">**\color{red}Problem Statements**:*</font>  *  <font color = "blue">\color{blue}Report aim to analyse Loan Default Dataset to estimate the probaility of an accounts going into default using other variables as predictor and henc enhance loans underwriting.</font>
+
+# Data Distribution
+
+The report aim to look at the accounts distribution by different demographic in order to identify outliers and asses the impact and correlation between demographic characteristics and probability of account going into default.
+
+## Accounts Distribution
+
+  - Age Groups* - Distribution of accounts Age group shows concentration in age group 26-35 where majority of accounts, ~ 70% concentration in that age group.
+  - Employment Years* - Accounts spred across employments years between < 1 year and up to 10 years with very few have more than 10 years.
+  - Loan Terms* - Accounts shows normal distribution by loan terms.
+  - Number of Credit Accounts* - Majority of accounts have 1 credit account only, ~ 60+%.
+  - Gender* - We can see concentration in Males compared to females.
+  - Marital Status* - No concentration can be seen by marital status, though more married individuals than singles.
+  - Employment status* - ~ 30% of accounts are unemployed.
+  - Default* - Data shows high number of defaulted accounts.
+    
+
+```{r}
+LDD <- read.csv("https://raw.githubusercontent.com/sameralzaim/W02/refs/heads/main/BankLoanDefaultDataset.csv")
+#View (LDD)
+```
+
+
+```{r}
+library(gridExtra)  # Load the package before using grid.arrange()
+
+
+ldd <- LDD %>%
+  mutate(Age_Group = cut(Age, 
+                         breaks = c(18, 25, 35, 45, 55, 65, Inf), 
+                         labels = c("18-25", "26-35", "36-45", "46-55", "56-65", "65+"),
+                         right = FALSE))  # Right = FALSE means 25 is in "18-25"
+
+# Create bar plot for Age Group
+age_plot <- ggplot(ldd, aes(x = Age_Group, fill = Age_Group)) +
+  geom_bar(fill = "navy") +
+  labs(title = "No. of Acct by Age",
+       x = "Age Group",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), legend.position = "none")  # Remove redundant legend
+
+# Group Employment Duration into bins
+ldd <- ldd %>%
+  mutate(Emp_duration = cut(Emp_duration, 
+                            breaks = c(0, 12, 24, 48, 96, 120, Inf), 
+                            labels = c("< 1", "1-2", "2-4", "4-8", "8-10", "10+"),
+                            right = FALSE))  # Right = FALSE means 24 is in "12-24"
+
+# Create bar plot for Employment Duration
+emp_plot <- ggplot(ldd, aes(x = Emp_duration, fill = Emp_duration)) +
+  geom_bar(fill = "navy") +
+  labs(title = "No. of Acct by Emp Years",
+       x = "Employment Years",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), legend.position = "none")  # Remove redundant legend
+
+# Create bar plot for Loan Term
+term_plot <- ggplot(ldd, aes(x = Term, fill = Term)) +
+  geom_bar(fill = "navy") +
+  labs(title = "No. of Acct by Loan Term",
+       x = "Loan Term",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), legend.position = "none")  # Remove redundant legend
+
+ldd <- LDD %>%
+  mutate(No_of_credit_acc = cut(No_of_credit_acc, 
+                         breaks = c(1, 3, 5, 7, Inf), 
+                         labels = c("1", "1-3", "3-5", "7+"),
+                         right = FALSE))  # Right = FALSE means 25 is in "18-25"
+
+# Create bar plot for No. of credit accounts
+credit_plot <- ggplot(ldd, aes(x = No_of_credit_acc, fill = No_of_credit_acc)) +
+  geom_bar(fill = "navy") +
+  labs(title = "No. of Acct by No of credit acc",
+       x = "No of Credit Acc",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), legend.position = "none")  # Remove redundant legend
+
+# Arrange the three plots side by side
+
+grid.arrange(age_plot, emp_plot, term_plot,credit_plot, ncol = 4)
+
+```
+
+
+``` {r}
+
+library(gridExtra)
+
+# Bar plot for Default
+Default_plot <- ggplot(LDD, aes(x = as.factor(Default))) +
+  geom_bar(fill = "brown2", color = "black") +
+  labs(title = "No. of Acct by Default",
+       x = "Default",
+       y = "Number of Accounts") +
+  theme_minimal()+
+   theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), legend.position = "none")  # Remove redundant legend
+
+# Bar plot for Gender
+gender_plot <- ggplot(LDD, aes(x = Gender)) +
+  geom_bar(fill = "cyan4", color = "black") +
+  labs(title = "No. of Acct by Gender",
+       x = "Gender",
+       y = "Number of Accounts") +
+  theme_minimal()+
+   theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), legend.position = "none")  # Remove redundant legend
+
+# Bar plot for Marital Status
+marital_plot <- ggplot(LDD, aes(x = Marital_status)) +
+  geom_bar(fill = "cyan4", color = "black") +
+  labs(title = "No. of Acct by Marital Status",
+       x = "Marital Status",
+       y = "Number of Accounts") +
+  theme_minimal()+
+   theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), legend.position = "none")  # Remove redundant legend
+
+# Bar plot for Employment Status
+emp_status_plot <- ggplot(LDD, aes(x = Emp_status)) +
+  geom_bar(fill = "cyan4", color = "black") +
+  labs(title = "No. of Acct by Emp Status",
+       x = "Employment Status",
+       y = "Number of Accounts") +
+  theme_minimal()+
+   theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), legend.position = "none")  # Remove redundant legend
+
+# Arrange the three plots side by side
+grid.arrange(gender_plot, marital_plot, emp_status_plot,Default_plot, ncol = 4)
+
+```
+
+## Missing values** 
+
+  - The graph below shows no missing values across all variables
+
+```{r}
+my_data <- as.data.frame(LDD)
+
+# Add row index for plotting
+my_data$row_id <- seq_len(nrow(my_data))
+
+# Convert missing values into a binary indicator
+missing_data <- my_data %>%
+  mutate(across(everything(), ~ ifelse(is.na(.), 1, 0))) %>%
+  pivot_longer(cols = -row_id, names_to = "Variable", values_to = "Missing")
+
+# Plot missing values as a heatmap
+ggplot(missing_data, aes(x = Variable, y = row_id)) +
+  geom_tile(aes(fill = as.factor(Missing))) +
+  scale_fill_manual(values = c("white", "red"), labels = c("Present", "Missing")) +
+  labs(title = "Missing Data Heatmap", x = "Variables", y = "Observations") +
+  theme_minimal()
+
+```
+
+## Distribution of Default Accounts 
+
+  - No particular trend emerges except that more default can be seen in lower age groups, femals, singles and accounts without personal loans
+
+```{r}
+ldd_long <- LDD %>%
+  mutate(across(everything(), as.character)) %>%  # Convert all columns to character
+  pivot_longer(cols = -Default, names_to = "Variable", values_to = "Value")
+
+# Generate distribution plots for each variable by Default
+ggplot(ldd_long, aes(x = Value, fill = as.factor(Default))) +
+  geom_bar(alpha = 0.7, position = "dodge") +  # Bar plot for categorical values
+  facet_wrap(~ Variable, scales = "free") +  # Separate plots for each variable
+  labs(title = "Distribution of Variables by number Defaulted Accounts",
+       x = "Value",
+       y = "Default",
+       fill = "Default") +
+  theme_minimal()
+```
+
+* **Distribution of Default Accounts by Gender and Marital status** 
+
+  - No particular trend emerges
+  
+```{r}
+
+ds <- LDD
+ds %>%
+  filter(Default %in% c(0, 1)) %>%
+  group_by(Gender, Marital_status, Default) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  ggplot(aes(x = Gender, y = n, fill = factor(Default))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_grid(. ~ Marital_status) +  # Side-by-side graphs
+  ggtitle("Number of Accounts with Default (0 vs 1) by Gender and Marital Status") +
+  labs(fill = "Default", x = "Gender", y = "Number of Accounts") +  
+  scale_fill_manual(values = c("1" = "brown2", "0" = "cyan4")) +  # Balanced Red-Green colors
+  theme_minimal() + 
+  theme(
+    panel.background = element_rect(fill = "#F0F0F0", color = NA),  # Gray inside graph only
+    plot.background = element_blank(),   # Keep x/y labels and titles clean (no gray)
+    strip.background = element_rect(fill = "#D3D3D3", color = "#D3D3D3"),  # Lighter gray facet headers
+    strip.text = element_text(color = "black", face = "bold"),  # Black bold text for headers
+    panel.spacing.x = unit(2, "lines"),  # THICK white separation between graphs
+    panel.grid.major = element_line(color = "white", size = 0.7),  # Thin white major grid lines
+    panel.grid.minor = element_line(color = "white", size = 0.7)   # Thin white minor grid lines
+  )
+
+```
+
+# Creating Missing accounts
+
+for the sake of the analysis we will create missing values in saving amount and calculate the missing values
+
+
+```{r, echo = FALSE}
+lddm <- LDD
+lddm$Saving_amount[sample(1:1000, 90, replace = FALSE)] <- NA
+
+```
+
+## Confirming number of missing values:
+
+``` {r}
+sum(is.na(lddm$Saving_amount))
+
+```
+
+# Imputing Missing Values
+
+## Pairing Variables with Missing Values with Predicting Variables
+
+
+We start by pairing the Variable to get sense of the potential relationship. From below we can see that Amount and saving acount has similar distribution. Same observation can be seen also with marital status.
+
+```{r, echo = FALSE}
+library(GGally)
+
+ggpairs(lddm, columns = c("Saving_amount", "Emp_duration", "Marital_status", "Amount"))
+
+```
+
+
+## Imputing Missing Values Using Random Regression Imputation
+
+  - Fit a linear model
+  - Predict Saving_amount for the missing values
+  - Get residuals from the linear model
+  - Build the scatterplot to compare regression and random regression models
+
+
+
+```{r}
+# Fit a linear model
+pred.mdl <- lm(Saving_amount ~ Emp_duration + Marital_status + Amount + Credit_score, 
+               data = lddm, na.action = na.exclude)
+
+# Identify missing values in Saving_amount
+missing_idx <- which(is.na(lddm$Saving_amount))  # Get missing value indices
+
+# Predict Saving_amount only for missing values
+pred.Saving_amount <- predict(pred.mdl, newdata = lddm[missing_idx, ])  
+
+# Assign predicted values to missing rows
+lddm$Saving_amount[missing_idx] <- pred.Saving_amount
+
+# Ensure prediction length matches missing values count
+if (length(pred.Saving_amount) != length(missing_idx)) {
+    stop("Prediction length does not match the number of missing values.")
+}
+
+# Get residuals from the linear model
+pred.resid <- resid(pred.mdl)
+
+# Ensure enough residuals are available for sampling
+m0 <- length(pred.Saving_amount)  
+if (length(pred.resid) >= m0) {
+    pred.yrand <- pred.Saving_amount + sample(pred.resid, m0, replace = TRUE)
+} else {
+    pred.yrand <- pred.Saving_amount  # Use deterministic values as fallback
+}
+
+# Assign the final imputed values
+lddm$Saving_amount[missing_idx] <- pred.yrand
+
+# Check if all missing values are imputed
+remaining_na <- sum(is.na(lddm$Saving_amount))
+
+
+# Scatter plot
+plot(lddm$Checking_amount, lddm$Saving_amount, 
+     main = "Saving_amount vs Checking_amount",
+     xlab = "Checking Amount", ylab = "Saving Amount", col = "gray")
+
+# Add regression-imputed points (red)
+points(lddm$Checking_amount[missing_idx], pred.Saving_amount, pch = 19, col = "red")
+
+# Add random regression-imputed points (blue)
+points(lddm$Checking_amount[missing_idx], pred.yrand, pch = 19, col = "blue")
+
+# Add legend
+legend("topleft", legend = c("Regression Imputation", "Random Regression Imputation"),
+       col = c("red", "blue"), pch = rep(19, 2), bty = "n", cex = 0.8)
+```
+
+
+```{r, include = FALSE}
+
+missing_idx <- which(is.na(lddm$Saving_amount))
+predicted_values <- predict(pred.mdl, newdata = lddm[missing_idx, ])
+
+# Count how many predictions are NA
+sum(is.na(predicted_values))  # Should be 0 if working correctly
+print(predicted_values)  # View predictions
+
+```
+
+  - Confirming that all missing values were assigned imputed values. we have zero missing values after imputaion as per below.
+  
+```{r, include =FALSE}
+
+sum(is.na(lddm$Saving_amount))  # Should be 0 if all were imputed
+lddm$Saving_amount[missing_idx] <- predicted_values
+
+```
+
+
+```{r}
+# Update the dataset with the imputed values for Saving_amount
+missing_idx <- which(is.na(lddm$Saving_amount))
+lddm$Saving_amount[missing_idx] <- pred.Saving_amount[missing_idx]
+
+# Count missing values after imputation
+missing_after <- sum(is.na(lddm$Saving_amount))
+print(paste("Missing values after imputation:", missing_after))
+
+```
+
+
+
+# Fitting The Logestic Regression Model For Default 
+
+```{r}
+
+# Load necessary library
+
+
+# Fit a full logistic regression model with all predictors
+full_model <- glm(Default ~ ., data = lddm, family = binomial)
+
+# Perform stepwise selection (default is backward elimination)
+step_model <- step(full_model, direction = "both")
+
+```
+
+
+# Predicting the Default
+
+From the all model logistic regression step above, we got our primary model and we use cross-validation is to compare performance between this model and another challenger model to arrive at optimal model selection, we will use the following two logistic regression models and use the 5-fold cross-validation method to identify the optimal model.
+
+  - Model 1:   Default = α0+ α1×Checking_amount + α2×Term + α3×Credit_score + α4×Personal_loan + α5×Home_loan +     α6×Education_loan + α7×Emp_status + α8×Saving_amount + α9×Age 
+
+
+  - Model 2:   Default = α0+ α1×Credit_score + α2×Home_loan + α3×Education_loan + α4×Emp_status + α5×Saving_amount + α6×Age 
+
+Model Selection via 5-fold Cross-Validation
+
+  - We use 5-fold cross-validation to select the better one from Model 1 and Model 2. 5-fold cross-validation: splitting the training set into 5 folds with equal size to perform cross-validation.
+
+  - Data Splitting: Using random splitting to partition the data into training set (700) and testing set (300).
+
+  - Choose Performance Measure: The resulting model will be used to predict the Default. We use the mean square error to measure the predictive performance.
+
+
+```{r}
+# Load the data
+data(LDD)
+#LDD$am <- as.factor(mtcars$am) # Convert to factor for logistic regression
+
+# Fit a logistic regression model
+model_glm <- glm(Default ~ Checking_amount + Term + Credit_score + Personal_loan + 
+    Home_loan + Education_loan + Emp_status + Saving_amount + 
+    Age, family = binomial, data = LDD)
+
+# Summary of the model
+summary(model_glm)
+
+```
+
+```{r}
+
+# Install plotly if not already installed
+if (!requireNamespace("plotly", quietly = TRUE)) {
+  install.packages("plotly")
+}
+
+# Load the package
+library(plotly)
+
+# using sample() to perform random splitting
+train.ID = sample(1:dim(lddm)[1], 700, replace = FALSE)  # without replacement
+# training set
+train = lddm[train.ID,]
+test = lddm[-train.ID,]
+## splitting the train set into 5 folds to train and validate the candidate models
+N = dim(train)[1]   # size of training data
+k = 5               # number of folds
+fld.n = ceiling(N/k)
+MSE.m1 = NULL       # null vector to store MSE
+MSE.m2 = NULL      
+for (i in 1:k){
+  valid.ID = ((i-1)*fld.n +1):(i*fld.n)  # observation ID for the i-th validation set 
+  valid.set = train[valid.ID, ]
+  train.set = train[-valid.ID,]
+  ## fitting two candidate models with combined 4 folds of data set
+  M01 = glm(Default ~ Checking_amount + Term + Credit_score + Personal_loan + Home_loan + Education_loan + Emp_status + Saving_amount + Age, family = binomial, data = train.set)
+  M02 = glm(Default ~ Credit_score + Home_loan + Education_loan + Emp_status + Saving_amount + Age, family = binomial, data = train.set)
+  ## Predicting Default using the two candidate models based on the validate set
+  predM01 = predict(M01, newdata = valid.set)
+  predM02 = predict(M02, newdata = valid.set)
+  ## calculating the MSE associated with the two models
+  MSE.m1[i] = mean((predM01 - valid.set$Default)^2)
+  MSE.m2[i] = mean((predM02 - valid.set$Default)^2)
+}
+## define a data frame to store the MSE of the candidate models
+## 
+MSE = data.frame(fold = rep(1:k,2), MSE = c(MSE.m1, MSE.m2), type=c(rep("Model 1",k), rep("Model 2", k)))
+
+## line plots of the 
+cvplot = ggplot(data = MSE, aes(x=fold, y=MSE, color = type)) +
+         geom_line() +
+         geom_point() +
+         coord_cartesian(xlim = c(0, 6),
+                         ylim = c(0,40)) +
+         geom_text(mapping = aes(x=2.0, y=5, 
+                  label=paste("Model 1 Mean MSE: = ", round(mean(MSE.m1),3), "")), 
+                   hjust=0) +
+         geom_text(mapping = aes(x=2.0, y=10, 
+                  label=paste("Model 2 Mean MSE: = ", round(mean(MSE.m2),3), "")), 
+                   hjust=0) + 
+         ggtitle("Line plots of MSE candidate Models across folds") +
+         theme(plot.title = element_text(hjust = 0.5),
+               plot.margin = unit(c(1,1,1,1), "cm"))
+ggplotly(cvplot)
+
+```
+
+```{r, include = FALSE}
+
+# Debugging the code and the outcome to make sure nothing missing
+
+sum(is.na(valid.set$Default)) # return number of missing values in Default
+sum(is.na(predM01)) # return number of missing values in predM01
+sum(is.na(predM02)) # return number of missing values in predM01
+print(MSE.m1) 
+print(MSE.m2)
+str(valid.set$Default)
+sum(is.na(valid.set$Default))  # Ensure no missing values
+str(MSE)  # Check structure
+head(MSE) # Preview first few rows
+print(cvplot)
+sum(is.na(MSE$MSE))
+
+```
+
+# Conclusion
+
+from the above we can see that Model 2 has lower MSE and more simpler, with 6 predictors, compared to model 1 and hence we choose model 2 as Default predictor.
+
+
