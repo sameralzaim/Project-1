@@ -1,0 +1,703 @@
+---
+title: 'Customer Churn'
+author: "Samer Alzaim"
+date: " "
+output:
+  html_document: 
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+    number_sections: yes
+    toc_collapsed: yes
+    code_folding: hide
+    code_download: yes
+    smooth_scroll: yes
+    theme: lumen
+  word_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    keep_md: yes
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    number_sections: yes
+    fig_width: 3
+    fig_height: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{=html}
+
+<style type="text/css">
+
+/* Cascading Style Sheets (CSS) is a stylesheet language used to describe the presentation of a document written in HTML or XML. it is a simple mechanism for adding style (e.g., fonts, colors, spacing) to Web documents. */
+
+h1.title {  /* Title - font specifications of the report title */
+  font-size: 24px;
+  font-weight: bold;
+  color: navy;
+  text-align: center;
+  font-family: "Gill Sans", sans-serif;
+}
+h4.author { /* Header 4 - font specifications for authors  */
+  font-size: 18px;
+  font-family: system-ui;
+  color: navy;
+  text-align: center;
+  font-weight: bold;
+}
+h4.date { /* Header 4 - font specifications for the date  */
+  font-size: 18px;
+  font-family: system-ui;
+  color: DarkBlue;
+  text-align: center;
+  font-weight: bold;
+}
+h1 { /* Header 1 - font specifications for level 1 section title  */
+    font-size: 22px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: center;
+    font-weight: bold;
+}
+h2 { /* Header 2 - font specifications for level 2 section title */
+    font-size: 20px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+    font-weight: bold;
+}
+
+h3 { /* Header 3 - font specifications of level 3 section title  */
+    font-size: 18px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+}
+
+h4 { /* Header 4 - font specifications of level 4 section title  */
+    font-size: 18px;
+    font-family: "Times New Roman", Times, serif;
+    color: darkred;
+    text-align: left;
+}
+
+body { background-color:white; }
+
+.highlightme { background-color:yellow; }
+
+p { background-color:white; }
+
+</style>
+```
+
+```{r setup, include=FALSE}
+# code chunk specifies whether the R code, warnings, and output 
+# will be included in the output files.
+if (!require("knitr")) {
+   install.packages("knitr")
+   library(knitr)
+}
+if (!require("tidyverse")) {
+   install.packages("tidyverse")
+library(tidyverse)
+}
+if (!require("GGally")) {
+   install.packages("GGally")
+library(GGally)
+}
+if (!require("glmnet")) {
+   install.packages("glmnet")
+library(glmnet)
+}
+if (!require("caret")) {
+   install.packages("caret")
+library(caret)
+}
+if (!require("MASS")) {
+   install.packages("MASS")
+library(MASS)
+}
+if (!require("mlbench")) {
+   install.packages("mlbench")
+library(mlbench)
+}
+if (!require("pROC")) {
+   install.packages("pROC")
+library(pROC)
+}
+if (!require("plotly")) {
+   install.packages("plotly")
+library(plotly)
+}
+if (!require("pander")) {
+   install.packages("pander")
+library(pander)
+}
+if (!require("e1071")) {
+   install.packages("e1071")
+library(e1071)
+}
+### 
+knitr::opts_chunk$set(echo = TRUE,       
+                      warning = FALSE,    
+                      results = TRUE,    
+                      message = FALSE,
+                      comment = NA
+                      )  
+```
+
+
+```{r}
+data1 <- read.table("https://pengdsci.github.io/datasets/ChurnData/Customer-Chrn-dataset.txt", 
+                   header = TRUE, sep = ",", stringsAsFactors = FALSE)
+```
+
+# Background
+
+In this step, we will look at numeric variable and fit the model to predict this variable. the dat set has 2 numeric variables, Monthly_Charges and Total_Charges. We will use Monthy_Scharges as our res-ponder variable.
+
+# Fitting the Model
+
+from the graph below, it seems that we only have 2 variables that contribute to the prediction of Monthly_Charges.
+
+``` {r}
+
+# Set seed for reproducibility
+set.seed(654321)  
+
+# Prepare features (X) and target (y)
+X <- as.matrix(data1[, -12])  # Features (all columns except the target) 
+y <- data1$Monthly_Charges  # Ensure numeric
+
+# Split the data into training and testing sets
+train_index <- createDataPartition(y, p = 0.8, list = FALSE)
+X_train <- X[train_index, ]
+X_test <- X[-train_index, ]
+y_train <- y[train_index]
+y_test <- y[-train_index]
+
+# Standardize the data (important for regularization)
+preprocess_params <- preProcess(X_train, method = c("center", "scale"))
+X_train <- predict(preprocess_params, X_train)
+X_test <- predict(preprocess_params, X_test)
+
+# Fit Linear Regression Models with Regularization
+fit_lasso <- glmnet(X_train, y_train, alpha = 1)       # Lasso regression  
+fit_ridge <- glmnet(X_train, y_train, alpha = 0)       # Ridge regression  
+fit_elastic_net <- glmnet(X_train, y_train, alpha = 0.5) # Elastic net  
+
+# Cross-validation
+cv_lasso <- cv.glmnet(X_train, y_train, alpha = 1)   
+cv_ridge <- cv.glmnet(X_train, y_train, alpha = 0)   
+cv_elastic_net <- cv.glmnet(X_train, y_train, alpha = 0.5)  
+
+```
+
+
+```{r}
+
+par(mar=c(5,4,6,3))
+# Plot coefficient path
+plot(fit_lasso, xvar = "lambda", label = TRUE,
+     lwd = 1.5,
+     main = "Coefficient Path Analysis: LASSO",
+     cex.main = 0.9,
+     col = rainbow(10))
+abline(v = 1, col = "purple", lty = 4, lwd = 2)
+abline(v = -1, col = "steelblue", lty = 2, lwd = 2)
+
+```
+
+##RMSE Plot
+Looking a RMSE plot we can see that best lambda is between 1 and zero, consideing lower lmbda will not further improve the RMSE.
+
+```{r}
+par(mar=c(5,4,6,3))
+##
+plot(cv_lasso, main = "RMSE Plot: LASSO",
+     cex.main = 0.9)
+```
+
+## Optimal Lambda
+
+Lasso and Elastic net have lower lambda comapred to Ridge
+
+```{r}
+
+# Cross-validation to find the best lambda
+cv_lasso <- cv.glmnet(X_train, y_train, alpha = 1)
+cv_ridge <- cv.glmnet(X_train, y_train, alpha = 0)
+cv_elastic_net <- cv.glmnet(X_train, y_train, alpha = 0.5)
+##
+# Extract coefficients for the best lambda
+best.lasso.lambda <- cv_lasso$lambda.min
+best.ridge.lambda <- cv_ridge$lambda.min
+best.elastic.net.lambda <- cv_elastic_net$lambda.min
+##
+# Lasso Regression (L1 Regularization): 
+# CAUTION: model formula differs from the regular regression formula 
+lasso_model.opt <- glmnet(X_train, y_train, alpha = 1,      # lasso regression 
+                      lambda = best.lasso.lambda)   # useser selected alpha, optimal lambda
+                                      # can be obtained through CV (see below)
+lasso_predictions.opt <- predict(lasso_model.opt, s = best.lasso.lambda, # user selected lambda value 
+                                                                          # (regularization paremeter)
+                             newx = X_test)  # test data set 
+# The following RMSE of prediction serves as a validation - one step validation
+lasso_rmse.opt <- sqrt(mean((y_test - lasso_predictions.opt)^2))   
+                                          
+# Ridge Regression (L2 Regularization)
+ridge_model.opt <- glmnet(X_train, y_train, alpha = 0, lambda = best.ridge.lambda)
+ridge_predictions.opt <- predict(ridge_model.opt, s = best.ridge.lambda, newx = X_test)
+ridge_rmse.opt <- sqrt(mean((y_test - ridge_predictions.opt)^2))
+
+# Elastic Net (Combination of L1 and L2)
+elastic_net_model.opt <- glmnet(X_train, y_train, alpha = 0.5, lambda = 0.1)
+elastic_net_predictions.opt <- predict(elastic_net_model.opt, s = 0.1, newx = X_test)
+elastic_net_rmse.opt <- sqrt(mean((y_test - elastic_net_predictions.opt)^2))
+
+RMSE.opt = cbind(LASSO.opt = lasso_rmse.opt, 
+                 Ridge.opt =  ridge_rmse.opt, 
+                 Elasticnet.opt = elastic_net_rmse.opt)
+pander(RMSE.opt)
+
+```
+
+## Lasso Formula
+
+```{r}
+##lasso
+# Extract coefficients for the best lambda
+best_lambda.lasso <- cv_lasso$lambda.min
+coefficients.lasso <- coef(cv_lasso, s = best_lambda.lasso)
+# Reconstruct the model equation
+intercept.lasso <- coefficients.lasso[1]
+betas.lasso <- coefficients.lasso[-1]
+cat("Model equation: y =", round(intercept.lasso,4), "+", 
+paste(round(betas.lasso,4), colnames(X), sep = "*", collapse = " + "), "\n")
+
+```
+
+## Ridge Formula
+
+### FUll model formula.
+```{r}
+
+##ridge
+
+# Extract coefficients for the best lambda
+best_lambda.ridge <- cv_ridge$lambda.min
+coefficients.ridge <- coef(cv_ridge, s = best_lambda.ridge)
+# Reconstruct the model equation
+intercept.ridge <- coefficients.ridge[1]
+betas.ridge <- coefficients.ridge[-1]
+cat("Model equation: y =", round(intercept.ridge,4), "+", 
+paste(round(betas.ridge,4), colnames(X), sep = "*", collapse = " + "), "\n")
+
+```
+
+### Short Model Formula with only variables with Coeficnet value greater than zero
+
+```{r}
+
+best_lambda.net <- cv_ridge$lambda.min
+
+# Extract coefficients at best lambda
+coefficients.net <- coef(cv_ridge, s = best_lambda.net)
+
+# Convert to a numeric vector
+coeff_values <- as.numeric(coefficients.net)
+coeff_names <- rownames(coefficients.net)
+
+# Remove terms where coefficients are zero
+nonzero_indices <- which(coeff_values != 0)
+nonzero_coeffs <- coeff_values[nonzero_indices]
+nonzero_names <- coeff_names[nonzero_indices]
+
+# Construct model equation
+intercept.net <- round(nonzero_coeffs[1], 4)  # Intercept
+betas.net <- round(nonzero_coeffs[-1], 4)  # Coefficients
+predictors.net <- nonzero_names[-1]  # Predictor names
+
+# Display final equation
+cat("Model equation: y =", intercept.net, 
+    ifelse(length(betas.net) > 0, paste("+", paste(betas.net, "*", predictors.net, collapse = " + ")), ""), "\n")
+    
+```
+
+## Elastic Net Formula
+
+### FUll model formula.
+```{r}
+
+##ElasticNet
+# Extract coefficients for the best lambda
+best_lambda.net <- cv_elastic_net$lambda.min
+coefficients.net <- coef(cv_elastic_net, s = best_lambda.net)
+# Reconstruct the model equation
+intercept.net <- coefficients.net[1]
+betas.net<- coefficients.net[-1]
+cat("Model equation: y =", round(intercept.net,4), "+", 
+paste(round(betas.net,4), colnames(X), sep = "*", collapse = " + "), "\n")
+
+```
+
+
+### Short Model Formula with only variables with Coeficnet value greater than zero
+
+```{r}
+
+best_lambda.net <- cv_elastic_net$lambda.min
+
+# Extract coefficients at best lambda
+coefficients.net <- coef(cv_elastic_net, s = best_lambda.net)
+
+# Convert to a numeric vector
+coeff_values <- as.numeric(coefficients.net)
+coeff_names <- rownames(coefficients.net)
+
+# Remove terms where coefficients are zero
+nonzero_indices <- which(coeff_values != 0)
+nonzero_coeffs <- coeff_values[nonzero_indices]
+nonzero_names <- coeff_names[nonzero_indices]
+
+# Construct model equation
+intercept.net <- round(nonzero_coeffs[1], 4)  # Intercept
+betas.net <- round(nonzero_coeffs[-1], 4)  # Coefficients
+predictors.net <- nonzero_names[-1]  # Predictor names
+
+# Display final equation
+cat("Model equation: y =", intercept.net, 
+    ifelse(length(betas.net) > 0, paste("+", paste(betas.net, "*", predictors.net, collapse = " + ")), ""), "\n")
+    
+```
+
+
+
+```{r}
+
+
+# Prepare data
+X <- as.matrix(data1[, c("Term", "Total_Charges")])  # Predictors
+y <- data1$Monthly_Charges  # Response
+
+# Create interaction term
+interaction_term <- X[, "Term"] * X[, "Total_Charges"]
+X_with_interactions <- cbind(X, interaction_term)
+
+# Fit glmnet model
+fit <- glmnet(X_with_interactions, y, alpha = 1)  # this fits LASSO regression
+# Extracts coefficients at lambda = 0.1
+# 
+#coef(fit, s = 0.1)    
+# Cross-validation
+cv_fit <- cv.glmnet(X_with_interactions, y, alpha = 1)
+
+# Plot the cross-validation results for manually select the value of lambda
+#plot(cv_fit)
+
+# Best lambda value: automatically selected optimal lambda
+best_lambda <- cv_fit$lambda.min
+#print(best_lambda)
+
+# Refit the model with the best lambda
+final_model <- glmnet(X_with_interactions, y, alpha = 1, lambda = best_lambda)
+coef(final_model, s = best_lambda)
+
+```
+
+# Support Vector Regression
+
+
+```{r}
+
+#####
+# Split data into features (X) and target (y)
+X <- data1[, -12]  # All columns except the target variable
+y <- data1[, 12]   # Target variable (median house value)
+#####
+# Split data into training and testing sets
+set.seed(123)
+train.index <- sample(1:nrow(data1), 0.8 * nrow(data1))
+X.train <- X[train.index, ]
+y.train <- y[train.index]
+X.test <- X[-train.index, ]
+y.test <- y[-train.index]
+#####
+data1.train <- data1[train.index, ]
+data1.test <- data1[-train.index, ]
+#####
+## Set up custom cross-validation control
+tune.control <- tune.control(
+  cross = 5,  # Use 5-fold cross-validation, the default is 10-fold cross-validation
+  nrepeat = 1 # Number of repetitions (for repeated cross-validation)
+)
+#####
+
+```
+
+## Check number of values and colums and the nature of the table
+800 observations with 13 columns which matches our design. also, data type is data.frame which what we are looking for
+
+```{r}
+
+print(dim(X.train))   # Should match the number of rows and columns expected
+print(length(y.train))  # Should match the number of rows in X.train
+print(class(X.train))  # Should be "matrix" or "data.frame"
+print(class(y.train))  # Should be "numeric" or "integer"
+
+print(class(X.train))  # Should be "data.frame" or "matrix"
+print(class(y.train))  # Should be "numeric" or "integer"
+
+print(sapply(X.train, class))  # Check each column's data type
+
+```
+
+## check if any colum have value that is not integer or numeric
+there are many columns that have character values which can not be processed by SVM
+
+```{r}
+
+# Identify character columns
+char_cols <- sapply(X.train, is.character)
+print(names(X.train)[char_cols])  # Show character column names
+
+# Convert character columns to factors, then to numeric
+X.train[char_cols] <- lapply(X.train[char_cols], function(col) as.numeric(as.factor(col)))
+X.test[char_cols] <- lapply(X.test[char_cols], function(col) as.numeric(as.factor(col)))
+
+```
+
+## Check if all charecter values converted to numeric
+all values are numeric and integers.
+
+```{r}
+
+print(sapply(X.train, class))  # All should be numeric or integer
+
+```
+
+## Checking for missing values
+No missing values
+
+```{r}
+
+# Check for missing values (NA) in X.train and y.train
+print(sum(is.na(X.train)))  # Should be 0
+print(sum(is.na(y.train)))  # Should be 0
+
+# Check for infinite values
+print(sum(is.infinite(as.matrix(X.train))))  # Should be 0
+print(sum(is.infinite(y.train)))  # Should be 0
+
+```
+## RUN SVM manually first
+It run without errors
+
+```{r}
+
+test.svm <- svm(X.train, y.train, 
+                type = "eps-regression",  
+                kernel = "radial", 
+                cost = 1, gamma = 0.01, epsilon = 0.1)
+
+print(test.svm)
+
+```
+
+## Now we run "tune" with small grid to see if it is woriking.
+from the below, it seems it is working.
+
+```{r}
+
+tune.RBF <- tune(svm, train.x = X.train, train.y = y.train, 
+                 ranges = list(epsilon = c(0.1, 0.2), 
+                               cost = c(1, 10), 
+                               gamma = c(0.01, 0.1)), 
+                 tunecontrol = tune.control(sampling = "cross", cross = 3))  
+
+print(tune.RBF$best.parameters)
+
+```
+
+```{r}
+
+# Perform grid search for hyperparameter tuning: RBF kernel is used
+tune.RBF <- tune(svm, train.x = X.train, train.y = y.train, 
+                    ranges = list(epsilon = seq(0.1, 0.5, 0.1), 
+                                  cost = c(1, 10, 100), 
+                                  gamma = c(0.01, 0.1, 1)), # Hyperpar in RBF
+                    tunecontrol = tune.control(sampling = "cross", 
+                                               cross = 5) # 5-fold cross-validation
+                    )
+####
+# Display the best parameters
+#print(tune.result$best.parameters)
+#####
+# Train the final model using the best parameters
+final.RBF<- svm(X.train, y.train, 
+                   type = "eps-regression",  # Use "nu-regression" for nu-SVR
+                   kernel = "radial", 
+                   epsilon = tune.RBF$best.parameters$epsilon, 
+                   cost = tune.RBF$best.parameters$cost, 
+                   gamma = tune.RBF$best.parameters$gamma)
+#####
+# Make predictions on the test set
+pred.RBF <- predict(final.RBF, X.test)
+
+# Evaluate performance
+mse.RBF <- mean((y.test - pred.RBF)^2)    # mean square error
+mae.RBF <- mean(abs(y.test - pred.RBF))   # mean absolute error
+
+#### linear kernel
+
+# Perform grid search for hyperparameter tuning: RBF kernel is used
+tune.lin <- tune(svm, train.x = X.train, train.y = y.train, 
+                    ranges = list(epsilon = seq(0.1, 0.5, 0.1), 
+                                  cost = c(1, 10, 100)), 
+                    tunecontrol = tune.control(sampling = "cross", 
+                                               cross = 5) # 5-fold cross-validation
+                    )
+####
+# Display the best parameters
+#print(tune.result$best.parameters)
+#####
+# Train the final model using the best parameters
+final.lin<- svm(X.train, y.train, 
+                   type = "eps-regression",  # Use "nu-regression" for nu-SVR
+                   kernel = "radial", 
+                   epsilon = tune.lin$best.parameters$epsilon, 
+                   cost = tune.lin$best.parameters$cost)
+#####
+# Make predictions on the test set
+pred.lin <- predict(final.lin, X.test)
+
+# Evaluate performance
+mse.lin <- mean((y.test - pred.lin)^2)    # mean square error
+mae.lin <- mean(abs(y.test - pred.lin))   # mean absolute error
+
+```
+
+```{r}
+
+# Convert relevant columns in both train and test to factors
+factor_columns <- c('Marital_Status', 'Multiple_line', 'Internet_service', 
+                    'Technical_support', 'Streaming_Videos', 'Churn')
+
+# Convert to factors for training data
+data1.train[factor_columns] <- lapply(data1.train[factor_columns], as.factor)
+
+# Convert to factors for test data
+X.test[factor_columns] <- lapply(X.test[factor_columns], as.factor)
+
+# Check that the types match
+sapply(data1.train[factor_columns], class)
+sapply(X.test[factor_columns], class)
+
+```
+
+```{r}
+
+# Check column names in both train and test data
+print(names(data1.train))
+print(names(X.test))
+
+```
+
+```{r}
+# Ensure X.test contains only the predictors (exclude 'Monthly_Charges')
+X.test <- data1.test[, -which(names(data1.test) == "Monthly_Charges")]
+```
+
+## Fitting The Model
+
+We fit Support Vector Regression (SVR) models with both linear and radial basis function (RBF) kernels, as well as an ordinary least squares (OLS) regression model (with step-wise variable selection). We will the evaluate the performance of these three regression models using mean squared error (MSE) and mean absolute error (MAE)
+
+The residual plot (top left panel) shows no curving which indicate that the model perform well.However, even if the model performs well, will look at the transformed log Monthly_Charges and see if we get better fit.
+
+```{r}
+
+# Step 1: Train the model
+lse.fit <- lm(Monthly_Charges ~ ., data = data1.train)  # Initial model
+AIC.fit <- stepAIC(lse.fit, direction = "both", trace = FALSE)  # Stepwise AIC model
+
+# Step 2: Make predictions on the test set (Ensure X.test is the right structure)
+X.test <- data1.test[, -which(names(data1.test) == "Monthly_Charges")]  # Exclude target
+pred.lse <- predict(AIC.fit, X.test)
+
+# Step 3: Evaluate the model
+mse.lse <- mean((y.test - pred.lse)^2)    # Mean Square Error
+mae.lse <- mean(abs(y.test - pred.lse))   # Mean Absolute Error
+
+par(mfrow=c(2,2), mar=c(2,2,2,2))
+plot(AIC.fit)
+
+```
+
+```{r}
+#str(data1.train)  # Inspect the structure of the dataset
+```
+
+
+
+# Fitting The log Transformed Model 
+
+No obvious difference can be seen from the log transfer model which indicate that the log transformation is ineffective.
+
+```{r}
+
+data1.train[] <- lapply(data1.train, function(x) if (is.character(x)) as.factor(x) else x)
+X.test[] <- lapply(X.test, function(x) if (is.character(x)) as.factor(x) else x)
+
+data1.train[] <- lapply(data1.train, function(x) if (is.factor(x)) as.numeric(x) else x)
+X.test[] <- lapply(X.test, function(x) if (is.factor(x)) as.numeric(x) else x)
+
+#str(data1.train)  # Inspect the structure of the dataset
+#str(X.test)  # Inspect the structure of the dataset
+```
+
+  
+
+```{r}
+
+data1.train$Monthly_Charges_log <- log(data1.train$Monthly_Charges + 1)  
+
+X.test <- data1.test[, -which(names(data1.test) == "Monthly_Charges")]  # Exclude target
+
+# Make predictions
+pred.lse <- predict(AIC.fit, X.test)
+
+# Assign the predicted values to the X.test dataset as the new Monthly_Charges
+X.test$Monthly_Charges <- pred.lse
+
+# Apply log transformation with safeguard for zero/negative values
+X.test$Monthly_Charges_log <- log(pmax(X.test$Monthly_Charges, 0) + 1)  
+
+# Evaluate the model
+mse.lse <- mean((y.test - pred.lse)^2)    # Mean Square Error
+mae.lse <- mean(abs(y.test - pred.lse))   # Mean Absolute Error
+
+# Plot the diagnostics
+par(mfrow = c(2, 2), mar = c(2, 2, 2, 2))
+plot(AIC.fit)  # Plot diagnostics for the model
+
+```
+
+  + comparing the performance of different models, table below, shows that Linear.SVR is the best performing model with the lowest mean squared (MSE) error and Mean Absolute Error (MAE)
+  
+  
+```{r}
+
+Performance <- data.frame(RBF.SVR=c(mse.RBF, mae.RBF),
+                          Linear.SVR = c(mse.lin, mae.lin),
+                          LSE.Reg =c(mse.lse, mae.lse),
+                          LSE.Reg.log = c(mse.lse, mae.lse))
+row.names(Performance) <- c("MSE", "MAE")
+##
+pander(Performance)
+
+```
+

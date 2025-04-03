@@ -1,0 +1,921 @@
+---
+title: 'Customer Churn Data'
+author: "Samer Alzaim"
+date: " "
+output:
+  html_document: 
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+    number_sections: yes
+    toc_collapsed: yes
+    code_folding: hide
+    code_download: yes
+    smooth_scroll: yes
+    theme: lumen
+  word_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    keep_md: yes
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    number_sections: yes
+    fig_width: 3
+    fig_height: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{=html}
+
+<style type="text/css">
+
+/* Cascading Style Sheets (CSS) is a stylesheet language used to describe the presentation of a document written in HTML or XML. it is a simple mechanism for adding style (e.g., fonts, colors, spacing) to Web documents. */
+
+h1.title {  /* Title - font specifications of the report title */
+  font-size: 24px;
+  font-weight: bold;
+  color: navy;
+  text-align: center;
+  font-family: "Gill Sans", sans-serif;
+}
+h4.author { /* Header 4 - font specifications for authors  */
+  font-size: 18px;
+  font-family: system-ui;
+  color: navy;
+  text-align: center;
+  font-weight: bold;
+}
+h4.date { /* Header 4 - font specifications for the date  */
+  font-size: 18px;
+  font-family: system-ui;
+  color: DarkBlue;
+  text-align: center;
+  font-weight: bold;
+}
+h1 { /* Header 1 - font specifications for level 1 section title  */
+    font-size: 22px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: center;
+    font-weight: bold;
+}
+h2 { /* Header 2 - font specifications for level 2 section title */
+    font-size: 20px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+    font-weight: bold;
+}
+
+h3 { /* Header 3 - font specifications of level 3 section title  */
+    font-size: 18px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+}
+
+h4 { /* Header 4 - font specifications of level 4 section title  */
+    font-size: 18px;
+    font-family: "Times New Roman", Times, serif;
+    color: darkred;
+    text-align: left;
+}
+
+body { background-color:white; }
+
+.highlightme { background-color:yellow; }
+
+p { background-color:white; }
+
+</style>
+```
+
+```{r setup, include=FALSE}
+# code chunk specifies whether the R code, warnings, and output 
+# will be included in the output files.
+if (!require("knitr")) {
+   install.packages("knitr")
+   library(knitr)
+}
+if (!require("tidyverse")) {
+   install.packages("tidyverse")
+library(tidyverse)
+}
+if (!require("GGally")) {
+   install.packages("GGally")
+library(GGally)
+}
+if (!require("glmnet")) {
+   install.packages("glmnet")
+library(glmnet)
+}
+if (!require("caret")) {
+   install.packages("caret")
+library(caret)
+}
+if (!require("MASS")) {
+   install.packages("MASS")
+library(MASS)
+}
+if (!require("mlbench")) {
+   install.packages("mlbench")
+library(mlbench)
+}
+if (!require("pROC")) {
+   install.packages("pROC")
+library(pROC)
+}
+if (!require("plotly")) {
+   install.packages("plotly")
+library(plotly)
+}
+if (!require("pander")) {
+   install.packages("pander")
+library(pander)
+}
+### 
+knitr::opts_chunk$set(echo = TRUE,       
+                      warning = FALSE,    
+                      results = TRUE,    
+                      message = FALSE,
+                      comment = NA
+                      )  
+```
+
+# Introduction
+  + *Customers Churn Data* - The dataset collect customers information and attempt to identify drivers of customers attrition for telecommunication company.
+  + *Data Collection Process* - Process of generating the data is unknown,however, it is most likely collected from a telecommunication company database.
+    
+# Description of Data
+
+  + *Data Structure* - dataset contains 1000 observations with 14 categorical and numerical variables. 
+  + *Itemized List of Feature Variables*:
+  - Variable 1: Sex (Categorical)
+  - Variable 2: Marital_Status (Categorical)
+  - Variable 3: Term (displayed in months-(Numeric))
+  - Variable 4: Phone_service (Yes – Have phone service, No – Does not have phone service – (Categorical))
+  - Variable 5: International_plan (Yes – Have international plan, No – Does not have phone service – (Categorical))
+  - Variable 6: Voice_mail_plan (Yes – Have voice mail plan, No – Does not have voice mail plan – (Categorical))
+  - Variable 7: Multiple_line (Yes – Have multiple line, No – Does not have multiple line, No phone – Does not have Phone service – (Categorical))
+  - Variable 8:Internet_service (Type of internet service Cable, Fibre optic, DSL, No internet- (Categorical))
+  - Variable 9: Technical_support (Yes – Have technical support, No – Does not have technical support, No internet – Does not have internet service – (Categorical))
+  - Variable 10:Streaming_Videos (Yes – Have technical support,No – Does not have technical support, No internet – Does not have internet service – (Categorical))
+  - Variable 11: Agreement_period (Type of contract like monthly contract, one year contract and two year contract (Categorical))
+  - Variable 12: Monthly_Charges (Numeric)
+  - Variable 13: Total_Charges (Numeric)
+  - Variable 14: Churn (Yes - customer churn ,No - customer not churn (categorical))
+
+
+```{r}
+data <- read.table("https://pengdsci.github.io/datasets/ChurnData/Customer-Chrn-dataset.txt", 
+                   header = TRUE, sep = ",", stringsAsFactors = FALSE)
+```
+
+# Data Analysis 
+
+## Missing values 
+
+No missing values in the data set.
+```{r}
+
+sum(is.na(data))  # Returns the total number of missing values
+
+```
+
+
+## Accounts Distribution
+  + *Account distribution* - the objective of this analysis to look at accounts distribution across all varaibles to identify outliers and trends, if any.
+  - We can see that data split almost 50/50 between males and females. 
+  - Data skewed toward married where married represent ~ 75% of population.
+  - Term: Data distributed across all terms with max of 8 years.
+  - Majority of accounts have phone service with almost 45-50% of then maintains multiple lines.
+  - International Plan: we can see that significant portion of the accounts, ~ 45% have international plan.
+  - The data shows that small portion of the accounts (< 35%) have internet service and those are distributed across different kind of services with Fiber Optic being the highest and little bit more than half of those have streaming service..
+  - Majority of the account have 1 years contract with their monthly bill below $ 90.
+  - Data shows that ~ 25% of accounts do churn. 
+  
+  
+```{r}
+
+library(gridExtra)  # Load the package before using grid.arrange()
+
+
+
+# Create bar plot for Sex
+sex_plot <- ggplot(data, aes(x = Sex, fill = sex)) +
+  geom_bar(fill = "navy") +
+  labs(title = "No. of Acct by/n(sex)",
+       x = "Sex",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), legend.position = "none")  # Remove redundant legend
+
+# Create bar plot for Marital Status
+mrt_plot <- ggplot(data, aes(x = Marital_Status, fill = Marital_Status)) +
+  geom_bar(fill = "lightblue") +
+  labs(title = "No. of Acct by\n(Marital Status)",
+       x = "Marital Status",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), legend.position = "none")  # Remove redundant legend
+
+
+# Group Terms into bins
+data <- data %>%
+  mutate(Term = cut(Term, 
+                            breaks = c(0, 12, 24, 48, 72, 96, Inf), 
+                            labels = c("< 1", "1-2", "2-4", "4-6", "6-8", "8+"),
+                            right = FALSE))  # Right = FALSE means 24 is in "12-24"
+# Create bar plot for Term
+term_plot <- ggplot(data, aes(x = Term, fill = Term)) +
+  geom_bar(fill = "orange") +
+  labs(title = "No. of Acct by\n(Term)",
+       x = "Term",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), legend.position = "none")  # Remove redundant legend
+
+# Create bar plot for No. of Phone service
+phone_plot <- ggplot(data, aes(x = Phone_service, fill = Phone_service)) +
+  geom_bar(fill = "green") +
+  labs(title = "No. of Acct by\n(Phone Service)",
+       x = "Phone service",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), legend.position = "none")  # Remove redundant legend
+
+# Convert all categorical values into upper case
+data$International_plan <- toupper(data$International_plan)  # Convert all to lowercase
+
+# Create bar plot for International plan
+Int_plot <- ggplot(data, aes(x = International_plan, fill = International_plan)) +
+  geom_bar(fill = "yellow") +
+  labs(title = "No. of Acct by\n(International Plan)",
+       x = "International Plan",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), legend.position = "none")  # Remove redundant legend
+
+# Arrange the three plots side by side
+
+grid.arrange(sex_plot, mrt_plot, term_plot,phone_plot, Int_plot, ncol = 5)
+
+```
+
+
+```{r}
+
+library(gridExtra)  # Load the package before using grid.arrange()
+
+# Create bar plot for Voice mail plan
+voice_plot <- ggplot(data, aes(x = Voice_mail_plan, fill = Voice_mail_plan)) +
+  geom_bar(fill = "gray") +
+  labs(title = "No. of Acct by\n(Voice Mail Plan)",
+       x = "Voice mail plan",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5),  legend.position = "none", legend.direction = "vertical")  # Remove redundant legend
+
+
+# Create bar plot for Internet service
+internet_plot <- ggplot(data, aes(x = Internet_service, fill = Internet_service)) +
+  geom_bar(fill = "red") +
+  labs(title = "No. of Acct by\n(Internet Service)",
+       x = "Internet service",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), legend.position = "none")  # Remove redundant legend
+
+# Create bar plot for No. of Multiple_line
+multiple_plot <- ggplot(data, aes(x = Multiple_line, fill = Multiple_line)) +
+  geom_bar(fill = "cyan4") +
+  labs(title = "No. of Acct by \n(No of Multiple Lines)",
+       x = "Multiple line",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), legend.position = "none")  # Remove redundant legend
+
+
+# Create bar plot for Technical support
+tech_plot <- ggplot(data, aes(x = Technical_support, fill = Technical_support)) +
+  geom_bar(fill = "yellow") +
+  labs(title = "No. of Acct by\n(Technical Support)",
+       x = "Technical Support",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),legend.position = "none")  # Remove redundant legend
+
+# Create bar plot for Streaming Videos
+video_plot <- ggplot(data, aes(x = Streaming_Videos, fill = Streaming_Videos)) +
+  geom_bar(fill = "#D3D3D3") +
+  labs(title = "No. of Acct by\n(Streaming Videos)",
+       x = "Streaming Videos",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5),  axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), legend.position = "none")  # Remove redundant legend
+
+# Arrange the three plots side by side
+
+grid.arrange(voice_plot, internet_plot,multiple_plot, tech_plot, video_plot, ncol = 5)
+
+```
+
+
+
+```{r}
+
+library(gridExtra)  # Load the package before using grid.arrange()
+
+# Create bar plot for Agreement_period
+agreement_plot <- ggplot(data, aes(x = Agreement_period, fill = Agreement_period)) +
+  geom_bar(fill = "navy") +
+  labs(title = "No. of Acct by\n(Agreement Period)",
+       x = "Agreement Period",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), legend.position = "none")  # Remove redundant legend
+
+# group Monthly_Charges
+data <- data %>%
+  mutate(Monthly_Charges = cut(Monthly_Charges, 
+                            breaks = c(0, 10, 30, 60, 90, 100, Inf), 
+                            labels = c("< $10", "$10-30", "$30-60", "$60-90", "$90-100", "$100+"),
+                            right = FALSE))  # Right = FALSE means 24 is in "12-24"
+
+# Create bar plot for No. of Monthly_Charges
+charges_plot <- ggplot(data, aes(x = Monthly_Charges, fill = Monthly_Charges)) +
+  geom_bar(fill = "lightblue") +
+  labs(title = "No. of Acct by \n(Monthly Charges)",
+       x = "Monthly Charges",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), legend.position = "none")  # Remove redundant legend
+
+# Create bar plot for No. of Total_Charges
+
+data <- data %>%
+  mutate(Total_Charges = cut(Total_Charges, 
+                            breaks = c(0, 500, 1000, 2000, 3000, 4000, 6000, 8000, Inf), 
+                            labels = c("< $500", "$0.5-1K", "1-2K", "2-3K", "3-4K",  "$4-6K", "$6-8K",  "8K+" ),
+                            right = FALSE))  # Right = FALSE means 24 is in "12-24"
+
+total_plot <- ggplot(data, aes(x = Total_Charges, fill = Total_Charges)) +
+  geom_bar(fill = "cyan4") +
+  labs(title = "No. of Acct by \n(Total Charges)",
+       x = "Total Charges",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1), legend.position = "none")  # Remove redundant legend
+
+
+
+# Create bar plot for No. of Churn
+churn_plot <- ggplot(data, aes(x = Churn, fill = Churn)) +
+  geom_bar(fill = "brown2") +
+  labs(title = "No. of Acct by \n(Churn)",
+       x = "churn",
+       y = "Count of Accounts") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9, face = "bold", hjust = 0.5), axis.text.x = element_text( vjust = 1, hjust = 1), legend.position = "none")  # Remove redundant legend
+
+
+# Arrange the three plots side by side
+
+grid.arrange( agreement_plot,charges_plot, total_plot, churn_plot, ncol = 4)
+
+```
+
+## Account Ditribution by Churn
+
+When looking at the distribution by number of churn accounts across all variables, we can see that accounts with monthly charges have much higher portion of churn accounts compared to accounts with yearly and 2 yearly contracts. 
+
+Similarly, we can see that accounts with Fiber Optic internet service have higher churn portion compared to other internet services.
+
+No clear separation can be seen between accounts based on number of line, sex, having phone service, voice mail plan or streaming videos.
+
+
+```{r}
+
+ldd_long <- data %>%
+  mutate(across(everything(), as.character)) %>%  # Convert all columns to character
+  pivot_longer(cols = -Churn, names_to = "Variable", values_to = "Value")
+
+# Generate distribution plots for each variable by Churn
+ggplot(ldd_long, aes(x = Value, fill = as.factor(Churn))) +
+  geom_bar(alpha = 0.7, position = "dodge") +  # Bar plot for categorical values
+  facet_wrap(~ Variable, scales = "free") +  # Separate plots for each variable
+  labs(title = "Distribution of Variables by Number of Churn Accounts",
+       x = "Value",
+       y = "Churn",
+       fill = "Churn") +
+  theme_minimal()
+
+```
+
+# Regularize Logestic Regression Model
+
+## Coefficient Path Analysis
+We utilize the coefficient path and measures of fit as they are essential tools for understanding model performance and selecting the optimal regularization parameter.
+
+A larger value of λ can lead to potential underfitting, as more coefficients are shrunk toward zero, resulting in a larger error (right panel).
+
+A smaller value of λ can lead to potential overfitting, as fewer coefficients are shrunk, allowing more to remain in the model, which results in a smaller error.
+
+based on the above, looking at the 2 graphs below we can see that our optimal lambda, the red and the blue vertical lines in the left graph between 4 and 8 corresponding to Log Lambda between -3 and -5. This also substantiated from the right graph where we can see that our Deviance is lower between these 2 lines while on moving to the left of the x axis would not generate meaningful drop in deviance. 
+ 
+``` {r}
+# Convert Churn to binary (1 = Yes, 0 = No)
+data$Churn <- ifelse(data$Churn == "Yes", 1, 0)
+data$Churn <- as.numeric(data$Churn)  # Ensure numeric type
+
+# Set seed for reproducibility
+set.seed(123456)  
+
+# Prepare features (X) and target (y)
+X <- data[, colnames(data) != "Churn"]  # Exclude Churn column
+y <- data$Churn  
+
+# Split the data into training and testing sets
+train_index <- createDataPartition(y, p = 0.8, list = FALSE)
+X_train <- X[train_index, ]
+X_test <- X[-train_index, ]
+y_train <- y[train_index]
+y_test <- y[-train_index]
+
+# Convert X_train and X_test to numeric matrices
+X_train <- data.matrix(X_train)
+X_test <- data.matrix(X_test)
+
+# Convert X_train and X_test to numeric matrices (required for glmnet)
+X_train <- data.matrix(X_train)
+X_test <- data.matrix(X_test)
+
+# ✅ Fit Logistic Regression Models with Regularization
+
+## LASSO (L1 Regularization)
+lasso_model <- glmnet(X_train, y_train, family = "binomial", alpha = 1)
+
+## Ridge (L2 Regularization)
+fit_ridge <- glmnet(X_train, y_train, family = "binomial", alpha = 0)
+
+## Elastic Net (Mix of L1 & L2)
+fit_elastic_net <- glmnet(X_train, y_train, family = "binomial", alpha = 0.5)
+
+# ✅ Cross-validation to find best lambda
+cv_lasso <- cv.glmnet(X_train, y_train, family = "binomial", alpha = 1)
+cv_ridge <- cv.glmnet(X_train, y_train, family = "binomial", alpha = 0)
+cv_elastic <- cv.glmnet(X_train, y_train, family = "binomial", alpha = 0.5)
+
+# Best lambda for LASSO
+best_lambda_lasso <- cv_lasso$lambda.min
+print(best_lambda_lasso)
+
+# Optimal lambda Lasso
+lambda_lasso <- cv_lasso$lambda.min
+
+# Refit the model with the optimal lambda
+lasso_model_opt <- glmnet(X_train, y_train, family = "binomial", alpha = 1, lambda = lambda_lasso)
+
+# Optimal lambda Ridge
+lambda_ridge <- cv_ridge$lambda.min
+
+# Refit the model with the optimal lambda
+ridge_model_opt <- glmnet(X_train, y_train, 
+                          family = "binomial", 
+                          alpha = 0, 
+                          lambda = lambda_ridge)
+
+
+# Optimal lambda Elastic
+lambda_elastic <- cv_elastic$lambda.min
+
+# Refit the model with the optimal lambda
+elastic_model_opt <- glmnet(X_train, y_train, 
+                            family = "binomial", 
+                            alpha = 0.5, 
+                            lambda = lambda_elastic)
+
+```
+
+```{r}
+
+## Visualize the impact of lambda on shrinking coefficients
+# Plot coefficient paths
+par(mar=c(5,4,6,2), mfrow=c(1,2)) # 
+plot(lasso_model, xvar = "lambda", label = TRUE,
+     col = rainbow(8),
+     lwd = 1,
+     main = "Coefficient Path Plot: LASSO",
+     cex.main = 0.8)
+text(-6, 0.4, "minimum CV error", col="red", cex = 0.6 )
+abline(v = log(cv_lasso$lambda.min), col = "red", lty = 4, lwd = 1)
+abline(v = log(cv_lasso$lambda.1se), col = "blue", lty = 4, lwd = 1)
+
+plot(cv_lasso, main="Measure of Model Fit: LASSO", cex.main = 0.8)
+
+```
+
+## Regularization Parameter Determination
+
+To avoid potential issues of over fitting and underfitting, a cross-validation was used to provide a range of suggested value for the regularization parameter λ. 
+
+we can see from the table below that ridge utilizes all variable leading potentially to overfitting, while lasso and elastic approaches, have lower number of variables.
+ 
+``` {r}
+
+lasso.coef <- as.matrix(coef(lasso_model_opt))
+ridge.coef <- as.matrix(coef(ridge_model_opt))
+elastic.coef <- as.matrix(coef(elastic_model_opt))
+regularized.coef <- data.frame(lasso = lasso.coef[,1],
+                               ridge = ridge.coef[,1],
+                          elasticnet = elastic.coef[,1])
+pander(regularized.coef)
+
+```
+
+## Optimal Cut0ff Probability Determination
+
+Comparing the accuracy of the 3 models shows that all the models are prety close to each others with ridge having marginally higher accuracy by 0.005 but the model is complecated abd potentially overfitting.
+
+```{r}
+
+#############################
+# Predict on the test set: type = "class" uses the default 
+# cut-off probability to be 0.5.
+predict_lasso <- predict(lasso_model_opt, newx = X_test, type = "response")
+predict_ridge <- predict(ridge_model_opt, newx = X_test, type = "response")
+predict_elastic <- predict(elastic_model_opt, newx = X_test, type = "response")
+
+###########################################
+## Optimal cutoff probability determination
+seq.cut <- seq(0,1, length=50)
+# y is a vector of 0 and 1
+acc.lasso <- NULL
+acc.ridge <- NULL
+acc.elastic <- NULL
+for (i in 1:length(seq.cut)){
+   predy.lasso <- ifelse(predict_lasso >seq.cut[i], 1, 0)
+   predy.ridge<- ifelse(predict_ridge >seq.cut[i], 1, 0)
+   predy.elastic<- ifelse(predict_elastic >seq.cut[i], 1, 0)
+   ##
+   acc.lasso[i] <- mean(y_test  == predy.lasso)
+   acc.ridge[i] <- mean(y_test == predy.ridge)
+   acc.elastic[i] <- mean(y_test  == predy.elastic)
+}
+## optimal cut-off: if the maximum accuracy occurs at multiple
+## cut-off probabilities, the average of these cutoff probabilities
+## will be defined as the optimal cutoff probability
+opt.cut.lasso <- mean(seq.cut[which(acc.lasso==max(acc.lasso))])
+opt.cut.ridge<- mean(seq.cut[which(acc.ridge==max(acc.ridge))])
+opt.cut.elastic <- mean(seq.cut[which(acc.elastic==max(acc.elastic))])
+##
+acc.data <- data.frame(prob = rep(seq.cut,3), 
+                       acc=c(acc.lasso, acc.ridge, acc.elastic), 
+                       group = c(rep("lasso",50), rep("ridge",50), rep("elastic",50)))
+
+```
+
+
+
+```{r}
+
+##
+gg.acc <- ggplot(data = acc.data, aes(x=prob, y = acc, color = group)) +
+  geom_line() +
+  annotate("text", x = 0.6, y = 0.45, 
+           label = paste("LASSO cutoff: ", round(opt.cut.lasso,5), "Accuracy: ", round(max(acc.lasso),5), 
+                         "\nRidge cutoff: ", round(opt.cut.ridge,5), "Accuracy: ", round(max(acc.ridge),5), 
+                         "\nElastic cutoff: ", round(opt.cut.elastic,5), "Accuracy: ", round(max(acc.elastic),5)), 
+           size = 3, 
+           color = "navy") +
+  ggtitle("Cut-off Probability vs Accuracy") +
+  labs(x = "cut-off Probability", 
+       y = "accuracy", color = "Group") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+##
+ggplotly(gg.acc)
+
+```
+
+the table below show the key statistics for all 3 methods. the data are very close to each others for example ridge and elastic approaches have the same Sensitivity while lasso marginally higher by ~ 0.007. similar observation can be seen across measures such as specificity, precision, detection rate, balanced accuracy..etc.
+
+```{r}
+
+#######################################
+## using the optimal cutoff probability to predict labels
+## 
+pred.lab.lasso <- ifelse(predict_lasso >opt.cut.lasso, 1, 0)
+pred.lab.ridge<- ifelse(predict_ridge >opt.cut.ridge, 1, 0)
+pred.lab.elastic<- ifelse(predict_elastic >opt.cut.elastic, 1, 0)
+
+
+#################################
+# Convert predictions to factors
+pred.lab.lasso.fct <- as.factor(pred.lab.lasso)
+pred.lab.ridge.fct <- as.factor(pred.lab.ridge)
+pred.lab.elastic.fct <- as.factor(pred.lab.elastic)
+
+# Convert actual values to factors
+y_test <- as.factor(y_test)
+
+# Confusion Matrix and Metrics
+confusion.lasso <- confusionMatrix(pred.lab.lasso.fct, y_test)
+confusion.ridge<- confusionMatrix(pred.lab.ridge.fct, y_test)
+confusion.elastic <- confusionMatrix(pred.lab.elastic.fct, y_test)
+
+## Commonly used performance measured
+PerfMeasures <- cbind(lasso = confusion.lasso$byClass, 
+                     ridge = confusion.ridge$byClass, 
+                     elastic = confusion.elastic$byClass)
+pander(PerfMeasures)
+
+```
+
+## ROC Analysis
+
+To compare the performance of the three regularized logistic regression models (LASSO, Ridge, and Elastic Net) using ROC analysis, we can calculate the Area Under the Curve (AUC) and plot the ROC curves. the higher the ROC the more predictive the model. we can see that the 3 models are very close with:
+  + Lasso AUC 0.775
+  + Ridge AUC 0.767
+  + Elastic AUC 0.772
+
+```{r}
+
+# library(pROC)
+# Predicted probabilities for each model: type = "response"
+prob_lasso <- predict(lasso_model_opt, newx = X_test, type = "response")
+prob_ridge <- predict(ridge_model_opt, newx = X_test, type = "response")
+prob_elastic <- predict(elastic_model_opt, newx = X_test, type = "response")
+
+# Compute ROC curves: roc object contains a lot information including
+# sensitivity, specificity, AUC, etc.
+roc_lasso <- roc(y_test, prob_lasso)
+roc_ridge <- roc(y_test, prob_ridge)
+roc_elastic <- roc(y_test, prob_elastic)
+
+# Compute AUC values
+auc_lasso <- auc(roc_lasso)
+auc_ridge <- auc(roc_ridge)
+auc_elastic <- auc(roc_elastic)
+
+## LASSO
+sen.lasso <- roc_lasso$sensitivities
+spe.lasso <- roc_lasso$specificities
+auc.lasso <- roc_lasso$auc
+
+## Ridge
+sen.ridge <- roc_ridge$sensitivities
+spe.ridge <- roc_ridge$specificities
+auc.ridge <- roc_ridge$auc
+
+## Elastic Net
+sen.elastic <- roc_elastic$sensitivities
+spe.elastic <- roc_elastic$specificities
+auc.elastic <- roc_elastic$auc
+
+## Plotting the ROC curves: three colors - green, orange, and purple
+
+plot(1-spe.lasso, sen.lasso, 
+     type = "l",
+     col = "cyan", 
+     xlim=c(0,1),
+     xlab = "1 - specificity",
+     ylab = "sensitivity",
+     main = "ROC Curves for LASSO, Ridge, and Elastic Net")
+lines(1-spe.ridge, sen.ridge, col = "red")
+lines(1-spe.elastic, sen.elastic, col = "navy")
+abline(0,1, type = "l", lty = 2, col = "cyan4", lwd = 1)
+
+# Add legend
+legend("bottomright", legend = c(paste("LASSO (AUC =", round(auc_lasso, 3), ")"),
+                                paste("Ridge (AUC =", round(auc_ridge, 3), ")"),
+                                paste("Elastic Net (AUC =", round(auc_elastic, 3), ")")),
+       col = c("cyan", "red", "navy"), lty = 1, cex = 0.8, bty = "n")
+
+```
+
+## Model Selection of Regularized Regression
+
+Since the regularized regression models are almost equally well-performed, we consider the following in slecting the model:
+
+  + Implementation: 
+  + Scalability: 
+  + Regularization Path:
+
+
+<font color = "red">**\color{red}Recommendation**:*</font>  *  <font color = "blue">\color{blue}Considering the fact the the 3 are almost equaly well performed, I would recommend using Lasso since it is easier to implement and explain to other. it is also more suited for large data set such as the communication company.</font>
+
+
+# Calculating The Churn Using SVM For Binary Classifiction
+
+## Confusion Matrix
+```{r}
+
+# Install and load the e1071 package
+library(e1071)
+
+##
+## two-way data splitting
+set.seed(123456)    # For reproducibility
+index <- sample(1:nrow(data), 0.8 * nrow(data))
+train.data <- data[index, ]
+test.data <- data[-index, ]
+##
+## Set up custom cross-validation control
+tune_control <- tune.control(
+  cross = 5,  # Use 5-fold cross-validation, the default is 10-fold cross-validation
+  nrepeat = 1 # Number of repetitions (for repeated cross-validation)
+)
+## 
+## Perform a grid search for the best hyperparameters
+tune.RBF <- tune(
+  svm,          # using the primary svm() algorithm to tune parameter
+  Churn ~ ., # model formula
+  data = train.data,
+  kernel = "radial",    # You can change the kernel if needed
+  ranges = list(
+    cost = 10^(-1:2),   # tune the hyperparameter C in the loss function
+    gamma = c(0.1, 0.5, 1, 2)  # the hyper parameter in the RBF kernel
+  ),
+  tunecontrol = tune_control  # Use custom cross-validation settings
+)
+# Print the tuning results for inspection
+# print(tune_result)
+##
+## Extract the best model and hyperparameters
+best.RBF <- tune.RBF$best.model
+best.cost.RBF <- best.RBF$cost
+best.gamma.RBF <- best.RBF$gamma
+
+# Print the best hyperparameters onor inspection
+# cat("Best Cost:", best_cost, "\n")
+# cat("Best Gamma:", best_gamma, "\n")
+##
+## Train the final SVM model with the best hyperparameters
+final.RBF.class <- svm(
+  Churn ~ .,
+  data = train.data,
+  kernel = "radial",
+  cost = best.cost.RBF,
+  gamma = best.gamma.RBF,
+   type = "C-classification"
+)
+
+# Print the final model - for inspection
+# print(final_model)
+##
+## Make predictions on the test set: type = "class"
+pred.RBF.class <- predict(final.RBF.class, test.data, type = "class")
+
+# Evaluate the predictions (e.g., using a confusion matrix)-Using default cutoff 0.5
+confusion.matrix.RBF <- table(Predicted = pred.RBF.class, Actual = test.data$Churn)
+print(confusion.matrix.RBF)
+
+```
+
+## Calculating Accuracy
+
+```{r}
+
+# Calculate accuracy
+accuracy <- sum(diag(confusion.matrix.RBF)) / sum(confusion.matrix.RBF)
+cat("\n\n Accuracy:", accuracy, "\n")
+
+```
+
+## Calculating AUC and showing Area Under the Curve AUC
+
+
+
+```{R}
+
+##
+
+
+train.data$Churn <- as.numeric(as.character(train.data$Churn))
+test.data$Churn <- as.numeric(as.character(test.data$Churn))
+
+## Set up custom cross-validation control
+tune.control <- tune.control(
+  cross = 5,  # Use 5-fold cross-validation, the default is 10-fold cross-validation
+  nrepeat = 1 # Number of repetitions (for repeated cross-validation)
+)
+## 
+## Perform a grid search for the best hyperparameters
+tune.lin <- tune(
+  svm,          # using the primary svm() algorithm to tune parameter
+  Churn ~ ., # model formula
+  data = train.data,
+  kernel = "linear",    # You can change the kernel if needed
+  ranges = list(
+    cost = 10^(-1:2)   # tune the hyperparameter C in the loss function
+  ),
+  tunecontrol = tune.control  # Use custom cross-validation settings
+)
+# Print the tuning results for inspection
+# print(tune_result)
+##
+## Extract the best model and hyperparameters
+best.lin <- tune.lin$best.model
+best.cost.lin <- best.lin$cost
+# Print the best hyperparameters for inspection
+# cat("Best Cost:", best_cost, "\n")
+# cat("Best Gamma:", best_gamma, "\n")
+##
+## Train the final SVM model with the best hyperparameters
+final.lin <- svm(
+  Churn ~ .,
+  data = train.data,
+  kernel = "linear",
+  cost = best.cost.lin,
+  probability = TRUE,
+   type = "C-classification"
+)
+
+## Request to return probabilities in final.RBF
+
+final.RBF <- svm(
+  Churn ~ .,
+  data = train.data,
+  kernel = "radial",
+  cost = best.cost.RBF,
+  gamma = best.gamma.RBF,
+  probability = TRUE,
+   type = "C-classification"
+)
+########################
+###  logistic regression
+logit.fit <- glm(Churn ~ ., data = train.data, family = binomial)
+AIC.logit <- step(logit.fit, direction = "both", trace = 0)
+pred.logit <- predict(AIC.logit, test.data, type = "response")
+
+###
+####################
+# ROC Curve and AUC
+pred.prob.lin <- predict(final.lin, test.data, probability = TRUE)
+pred.prob.RBF <- predict(final.RBF, test.data, probability = TRUE)
+##
+## extracting probabilities
+prob.linear <- attr(pred.prob.lin, "probabilities")[, 2]
+prob.radial <- attr(pred.prob.RBF, "probabilities")[, 2]
+###
+roc_lin <- roc(test.data$Churn, prob.linear)
+roc_RBF <- roc(test.data$Churn, prob.radial)
+roc_logit <- roc(test.data$Churn, pred.logit)
+### Sen-Spe
+lin.sen <- roc_lin$sensitivities
+lin.spe <- roc_lin$specificities
+rad.sen <- roc_RBF$sensitivities
+rad.spe <- roc_RBF$specificities
+logit.sen <- roc_logit$sensitivities
+logit.spe <- roc_logit$specificities
+## AUC
+auc.lin <- roc_lin$auc
+auc.rad <- roc_RBF$auc
+auc.logit <- roc_logit$auc
+## Plotting ROC curves
+
+plot(1-lin.spe, lin.sen,  
+     xlab = "1 - specificity",
+     ylab = "sensitivity",
+     col = "darkred",
+     type = "l",
+     lty = 1,
+     lwd = 1,
+     main = "ROC Curves of SVM")
+lines(1-rad.spe, rad.sen, 
+      col = "blue",
+      lty = 1,
+      lwd = 1)
+lines(1-logit.spe, logit.sen,      
+      col = "orange",
+      lty = 1,
+      lwd = 1)
+abline(0,1, col = "navy", lty = 2, lwd = 2)
+abline(v=c(0.049,0.151), lty = 3, col = "brown2")
+legend("bottomright", c("Linear Kernel", "Radial Kernel", "Logistic Regression"),
+       lty = c(1,1,1), lwd = rep(1,3),
+       col = c("darkred", "blue", "orange"),
+       bty="n",cex = 0.8)
+## annotation - AUC
+text(0.8, 0.46, paste("Linear AUC: ", round(auc.lin,4)), cex = 0.8)
+text(0.8, 0.4, paste("Radial AUC: ", round(auc.rad,4)), cex = 0.8)
+text(0.8, 0.34, paste("Logistic AUC: ", round(auc.logit,4)), cex = 0.8)
+
+```
+
+
+# Conclusion
+
+Comparing Both methods of Calculation the SVM and The Regularization 
+
+  + AUC: The SVM selected model shows AUC of 0.7998 Versus AUC of 0.775 for the regularized / Lasso method
+  + Accuracy: The SVM selected model shows accuracy of 0.76 Versus accuracy of 0.6529 for the regularized method
+
+<font color = "red">**\color{red}Recommendation**:*</font>  *  <font color = "blue">\color{blue}Based on the above, it is recommended that we use the SVM method / Linear model as our final model.</font>
+
+
