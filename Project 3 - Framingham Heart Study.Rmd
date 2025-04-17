@@ -1,0 +1,1407 @@
+---
+title: "Framingham Heart Study"
+author: "Samer Alzaim"
+date: " "
+output:
+  html_document: 
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+    number_sections: yes
+    toc_collapsed: yes
+    code_folding: hide
+    code_download: yes
+    smooth_scroll: yes
+    theme: lumen
+  word_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    keep_md: yes
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    number_sections: yes
+    fig_width: 3
+    fig_height: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{=html}
+
+<style type="text/css">
+
+/* Cascading Style Sheets (CSS) is a stylesheet language used to describe the presentation of a document written in HTML or XML. it is a simple mechanism for adding style (e.g., fonts, colors, spacing) to Web documents. */
+
+h1.title {  /* Title - font specifications of the report title */
+  font-size: 24px;
+  font-weight: bold;
+  color: navy;
+  text-align: center;
+  font-family: "Gill Sans", sans-serif;
+}
+h4.author { /* Header 4 - font specifications for authors  */
+  font-size: 18px;
+  font-family: system-ui;
+  color: navy;
+  text-align: center;
+  font-weight: bold;
+}
+h4.date { /* Header 4 - font specifications for the date  */
+  font-size: 18px;
+  font-family: system-ui;
+  color: DarkBlue;
+  text-align: center;
+  font-weight: bold;
+}
+h1 { /* Header 1 - font specifications for level 1 section title  */
+    font-size: 22px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: center;
+    font-weight: bold;
+}
+h2 { /* Header 2 - font specifications for level 2 section title */
+    font-size: 20px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+    font-weight: bold;
+}
+
+h3 { /* Header 3 - font specifications of level 3 section title  */
+    font-size: 18px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+}
+
+h4 { /* Header 4 - font specifications of level 4 section title  */
+    font-size: 18px;
+    font-family: "Times New Roman", Times, serif;
+    color: darkred;
+    text-align: left;
+}
+
+body { background-color:white; }
+
+.highlightme { background-color:yellow; }
+
+p { background-color:white; }
+
+</style>
+```
+
+```{r setup, include=FALSE}
+# code chunk specifies whether the R code, warnings, and output 
+# will be included in the output files.
+if (!require("knitr")) {
+   install.packages("knitr")
+   library(knitr)
+}
+if (!require("tidyverse")) {
+   install.packages("tidyverse")
+library(tidyverse)
+}
+if (!require("GGally")) {
+   install.packages("GGally")
+library(GGally)
+}
+if (!require("glmnet")) {
+   install.packages("glmnet")
+library(glmnet)
+}
+if (!require("caret")) {
+   install.packages("caret")
+library(caret)
+}
+if (!require("MASS")) {
+   install.packages("MASS")
+library(MASS)
+}
+if (!require("mlbench")) {
+   install.packages("mlbench")
+library(mlbench)
+}
+if (!require("pROC")) {
+   install.packages("pROC")
+library(pROC)
+}
+if (!require("plotly")) {
+   install.packages("plotly")
+library(plotly)
+}
+if (!require("pander")) {
+   install.packages("pander")
+library(pander)
+}
+if (!require("randomForest")) {
+   install.packages("randomForest")
+library(randomForest)
+}
+
+if (!require("ipred")) {
+   install.packages("ipred")
+library(ipred)
+}
+
+if (!require("rpart")) {
+   install.packages("rpart")
+library(rpart)
+}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+if (!require("rpart.plot")) {
+   install.packages("rpart.plot")
+library(rpart.plot)
+}
+
+### 
+knitr::opts_chunk$set(echo = TRUE,       
+                      warning = FALSE,    
+                      results = TRUE,    
+                      message = FALSE,
+                      comment = NA
+                      )  
+```
+
+
+```{r}
+data <- read.csv("https://raw.githubusercontent.com/sameralzaim/Project-3/main/FraminghamHeartStudy.csv", 
+                   header = TRUE, sep = ",", stringsAsFactors = FALSE)
+
+#head (data, n=10)
+
+```
+
+
+# Introducion
+
+The Framingham Heart Study is a long-term, ongoing cardiovascular cohort study of residents of the city of Framingham, Massachusetts. The study began in 1948 with 5,209 adult subjects from Framingham, and is now on its third generation of participants. 
+
+The Framingham Heart Study was a landmark study in epidemiology in that it was the first prospective study of cardiovascular disease and identified the concept of risk factors and their joint effects FHS Longitudinal Data Document
+
+More information about this long-term observational study can be found at https://nfb.org//sites/default/files/images/nfb/publications/vodold/vspr9804.htm
+
+The goal is to make some predictive models on an FHS dataset and review some exploratory and modeling techniques
+
+## Itemized Variables List
+
+The data consist of 4240 observations and 16 variables.
+
+| **Variable**              | **Description**                    |**Class** |
+|---------------------------|------------------------------------|----------|
+| male                      | Gender                             | int      |
+| age                       | Age at the time of medical exam    | int      |
+| education                 | Education level (4 levels)         | int      |
+| currentSmoker             | cigarette smoking                  | int      |
+| cigsPerDay                | cigarettes smoked each day         | int        |
+| BPMeds                    | Use of Anti-hypertensive           | int      |
+| prevalentStroke           | Prevalent Stroke (0 = No disease)  | int      |
+| prevalentHyp              | Subject defined as hypertensive    | int      |
+| diabetes                  | Diabetic                           | int      |
+| totChol                   | Total cholesterol (mg/dL)          | int      |
+| sysBP                     | Systolic Blood Pressure            | num      |
+| diaBP                     | Diastolic blood pressure (mmHg)    | num      |
+| BMI                       | Body Mass Index                    | num      |
+| heartRate                 | Heart rate                         | int      |
+| glucose                   | Blood glucose level                | int      |
+| TenYearCHD                | 10 year risk coronary heart disease| int      |
+
+
+
+## Checking For Missing data
+
+645 missing values in the database
+
+out the 645 missing value, the distribution is as follows:
+ + Glucose: 388
+ + education: 115
+ + BPMeds: 53
+ + Total Cholesterol: 50
+ + Cigarates per day: 29
+ + BMI: 19
+ + Heart Rate: 1
+ 
+ majority of the missing values are the Glucose reading, however Glucose is indication of debates (> 125) and since we d not have any missing values in diabetes variable, we are not overly concerns with this missing values. 
+ 
+ Additionally, for this and rest of missing value, trees are good in handling and accounting for missing values, hence, we will proceed without imputing the missing values.
+ 
+```{r}
+# sum (is.na(data))
+
+colSums(is.na(data))
+```
+
+## Data Distribution & Outliers
+
+🟦 Male: Slightly more individuals coded as 0 (females) than 1 (males).
+
+🟦 Education: Most people are in level 1 (1720), fewest in level 4 (473). Skewed toward lower education levels
+
+🟦 Diabetes: Majority of people are diabetes free, 4131 out of 4240.
+
+🟦 TenYearCHD: About 15% had CHD — relatively rare outcome
+
+🟦 Smokers: Half the population smokes or used to smoke
+
+🟦 BPMeds (Blood Pressure Medications): Very few are on BP meds (~3%).
+
+🟦 PrevalentStroke: Extremely rare in the dataset (~0.6%).
+
+🟦 PrevalentHyp (Hypertension): About 31% have high blood pressure
+ 
+ 
+```{r}
+
+layout(matrix(1:8, nrow = 2), widths = c(1, 1, 1, 1))
+# Create a frequency table Gender
+male_counts <- table(data$male)
+
+# Make the barplot and capture the midpoints of bars
+bp <- barplot(male_counts,
+              main = "Distributio by Gender",
+              col = "skyblue",
+              xlab = "Gender",
+              ylim = c(0, max(male_counts) * 1.2))  # Add a little space for the labels
+
+# Add the text labels (counts)
+text(x = bp, y = male_counts, labels = male_counts, pos = 3, cex = 0.9)
+
+
+# Create a frequency table
+CS_counts <- table(data$currentSmoker)
+
+# Make the barplot and capture the midpoints of bars
+bp <- barplot(CS_counts,
+              main = "Distribution by Smoker",
+              col = "skyblue",
+              xlab = "Smoker",
+              ylim = c(0, max(CS_counts) * 1.2))  # Add a little space for the labels
+
+# Add the text labels (counts)
+text(x = bp, y = CS_counts, labels = CS_counts, pos = 3, cex = 0.9)
+
+
+# Create a frequency table
+education_counts <- table(data$education)
+
+# Make the barplot and capture the midpoints of bars
+bp <- barplot(education_counts,
+              main = "Distribution by Education",
+              col = "skyblue",
+              xlab = "Education",
+              ylim = c(0, max(education_counts) * 1.2))  # Add a little space for the labels
+
+# Add the text labels (counts)
+text(x = bp, y = education_counts, labels = education_counts, pos = 3, cex = 0.9)
+  
+# Create a frequency table
+BPMeds_counts <- table(data$BPMeds)
+
+# Make the barplot and capture the midpoints of bars
+bp <- barplot(BPMeds_counts,
+              main = "Distribution by BPMeds",
+              col = "skyblue",
+              xlab = "BPMeds",
+              ylim = c(0, max(BPMeds_counts) * 1.4))  # Add a little space for the labels
+
+# Add the text labels (counts)
+text(x = bp, y = BPMeds_counts, labels = BPMeds_counts, pos = 3, cex = 0.9)
+
+# Create a frequency table
+diabetes_counts <- table(data$diabetes)
+
+# Make the barplot and capture the midpoints of bars
+bp <- barplot(diabetes_counts,
+              main = "Distribution by diabetes",
+              col = "skyblue",
+              xlab = "diabetes",
+              ylim = c(0, max(diabetes_counts) * 1.2))  # Add a little space for the labels
+
+# Add the text labels (counts)
+text(x = bp, y = diabetes_counts, labels = diabetes_counts, pos = 3, cex = 0.9)
+
+# Create a frequency table
+prevalentStroke_counts <- table(data$prevalentStroke)
+
+# Make the barplot and capture the midpoints of bars
+bp <- barplot(prevalentStroke_counts,
+              main = "Distribution by Preventive Stroke",
+              col = "skyblue",
+              xlab = "prevalentStroke",
+              ylim = c(0, max(prevalentStroke_counts) * 1.2))  # Add a little space for the labels
+
+# Add the text labels (counts)
+text(x = bp, y = prevalentStroke_counts, labels = prevalentStroke_counts, pos = 3, cex = 0.9)
+
+
+# Create a frequency table
+TenYearCHD_counts <- table(data$TenYearCHD)
+
+# Make the barplot and capture the midpoints of bars
+bp <- barplot(TenYearCHD_counts,
+              main = "Distribution by 10Years Education",
+              col = "navy",
+              xlab = "TenYearCHD",
+              ylim = c(0, max(TenYearCHD_counts) * 1.2))  # Add a little space for the labels
+
+# Add the text labels (counts)
+text(x = bp, y = TenYearCHD_counts, labels = TenYearCHD_counts, pos = 3, cex = 0.9)
+
+# Create a frequency table
+prevalentHyp_counts <- table(data$prevalentHyp)
+
+# Make the barplot and capture the midpoints of bars
+bp <- barplot(BPMeds_counts,
+              main = "Distribution by prevalentHyp",
+              col = "skyblue",
+              xlab = "prevalentHyp",
+              ylim = c(0, max(prevalentHyp_counts) * 1.4))  # Add a little space for the labels
+
+# Add the text labels (counts)
+text(x = bp, y = prevalentHyp_counts, labels = prevalentHyp_counts, pos = 3, cex = 0.9)
+
+```
+
+Some variables (like diabetes, stroke, and BP meds) are highly imbalanced, which can affect modeling (especially classification models like logistic regression or decision trees).
+
+Class imbalance may require techniques like resampling, weighting, or threshold tuning.
+
+CHD (the target variable) is imbalanced but not extreme (~15%).
+
+```{r}
+# Load required library
+library(plotly)
+
+# Create individual interactive boxplots
+p1 <- plot_ly(data, y = ~heartRate, type = "box", name = "heartRate", boxpoints = "outliers", marker = list(color = "brown2"))
+p2 <- plot_ly(data, y = ~sysBP, type = "box", name = "sysBP", boxpoints = "outliers", marker = list(color = "purple1"))
+p3 <- plot_ly(data, y = ~totChol, type = "box", name = "totChol", boxpoints = "outliers", marker = list(color = "cyan4"))
+p4 <- plot_ly(data, y = ~glucose, type = "box", name = "glucose", boxpoints = "outliers", marker = list(color = "brown2"))
+
+
+# Arrange them in a single row using subplot
+subplot(p1, p2, p3, p4, nrows = 1, shareY = FALSE, titleX = TRUE)
+
+```
+
+🟦 Heart Rate: Many values above ~100, with a few >140 (likely high resting HRs)
+
+🟧 sysBP (Systolic Blood Pressure): Many above 180–250, some extreme values ~300+. High number of systolic BP outliers could indicate hypertension cases or data entry errors.
+
+🟩 Total Cholesterol: Outliers: Several values >400 and even up to 700+. Cholesterol levels above 240 are considered high — this data may have individuals at cardiovascular risk.
+
+🟥 Glucose: Large number of outliers above 125, going up to 400. Glucose >126 mg/dL is diagnostic for diabetes — data has many such high values.
+
+
+
+```{r}
+# Load required library
+library(plotly)
+
+# Create individual interactive boxplots
+p1 <- plot_ly(data, y = ~cigsPerDay, type = "box", name = "cigsPerDay", boxpoints = "outliers", marker = list(color = "brown2"))
+p2 <- plot_ly(data, y = ~age, type = "box", name = "age", boxpoints = "outliers", marker = list(color = "purple1"))
+p3 <- plot_ly(data, y = ~BMI, type = "box", name = "BMI", boxpoints = "outliers", marker = list(color = "green3 "))
+p4 <- plot_ly(data, y = ~diaBP, type = "box", name = "diaBP", boxpoints = "outliers", marker = list(color = "green3"))
+
+
+# Arrange them in a single row using subplot
+subplot(p1, p2, p3,p4, nrows = 1, shareY = FALSE, titleX = TRUE)
+
+```
+
+🟦 Cigarettes per Day: Most people smoke little or not at all, but there's a tail of heavy smokers.
+
+🟧 Age: Age distribution is fairly centered in middle-aged adults, with no major outliers
+
+🟩 Body Mass Index (BMI): Majority of the data lies in the healthy to overweight range, but a noticeable number of people are in the obese range (BMI > 30).
+
+🟥 Diastolic Blood Pressure: Many individuals have elevated diastolic BP. High count of outliers suggests possible hypertensive cases needing attention
+
+**The below scatter plot shows the relationship between glucose and diabetes** 
+
+```{r}
+
+library(ggplot2)
+
+ggplot(data, aes(x = glucose, y = as.factor(diabetes))) +
+  geom_jitter(width = 0, height = 0.1, alpha = 0.5, color = "blue") +
+  labs(
+    title = "Glucose vs Diabetes",
+    x = "Glucose",
+    y = "Diabetes (0 = No, 1 = Yes)"
+  ) +
+  theme_minimal()
+
+```
+
+From the above scatter plot =, we can see that majority, almost all, of the persons not diagnosed with diabetes have glucose < 125. similarly we can see that majority of people diagnosed with diabetes have glucose > 125
+
+
+# Predicting Cardiovascular Desease CHD
+
+To predict and calculate class variable, we use Classification trees. Classification trees are a type of supervised learning algorithm that recursively partitions the feature space to predict categorical target variables.
+
+
+## Grow Initial Tree
+The initial tree size is controlled by some default hyper-parameters "rpart.control()". It tends to be over-fitted.
+
+While it is common in classification that the key challenge is that the classes (categories) are not equally represented. Our response variable have 644 observations with yes and 3596 observations with no.
+
+A we are building the tree, we start with the entire dataset at the root node and then recursively split the data into purer subsets
+
+Optimal Tree Size: Typically where xerror is minimized
+
+```{r}
+
+# Step 2: Split data into training and test sets
+set.seed(12345)
+train.index <- createDataPartition(data$TenYearCHD, p = 0.7, list = FALSE)
+train.data <- data[train.index, ]
+test.data <- data[-train.index, ]
+
+# Step 3: Fit the classification tree using the new binary target
+
+tree.model <- rpart(TenYearCHD ~ ., 
+                    data = train.data[, !(names(train.data) %in% "class")],  # drop original class
+                    method = "class",   # classification tree
+                    parms = list(split = "gini",  # Using Gini index
+                                 # FN cost = 1, FP cost = 0.5
+                                 loss = matrix(c(0, 0.5, 1, 0), nrow = 2)  
+                                 ),
+                    control = rpart.control(minsplit = 20,  # Min 15 obs to split
+                                           minbucket = 10,   # Min 7 obs in leaf
+                                           # Complexity parameter
+                                           cp = 0.001, # complex parameter
+                                           maxdepth = 7))   # Max tree depth
+
+```
+
+```{r}
+rpart.plot(tree.model, 
+           extra = 104, # check the help document for more information
+           # color palette is a sequential color scheme that blends green (G) to blue (Bu)
+           box.palette = "GnBu",  
+           branch.lty = 1, 
+           shadow.col = "gray", 
+           nn = TRUE)
+```
+
+## Pruning Tree
+
+```{r}
+#Print the complexity parameter table
+pander(tree.model$cptable)
+
+```
+
+The below graph gives the reference line (broken line) for 1-SE rule. The numbers on the top of the plot represent the leaf nodes in the final tree diagram.
+
+```{r}
+# Print cp table
+#printcp(tree.model)
+
+# Plot cp vs cross-validated error
+plotcp(tree.model)
+
+```
+
+For clarity in the analysis, we introduce two notations: min.cp represents the cp value yielding the minimum cross-validation error, while 1SE.cp denotes the cp value selected by the more conservative 1-SE rule (minimal error plus one standard error).
+
+The below-pruned tree diagram is based on the 1-SE rule. Next, we plot the tree diagram based on the minimum cross-validation error.
+
+
+```{r}
+
+# Find the optimal cp value that minimizes cross-validated error
+min.cp <- tree.model$cptable[which.min(tree.model$cptable[,"xerror"]),"CP"]
+
+# Prune the tree using the optimal cp
+pruned.tree.1SE <- prune(tree.model, cp = 0.001)  
+pruned.tree.min <- prune(tree.model, cp = min.cp)
+
+# Visualize the pruned tree
+rpart.plot(pruned.tree.1SE, 
+           extra = 104, # check the help document for more information
+           # color palette is a sequential color scheme that blends green (G) to blue (Bu)
+           box.palette = "GnBu",  
+           branch.lty = 1, 
+           shadow.col = "navy", 
+           nn = TRUE,
+           main = "Pruned Classification Tree (1-SE Rule)")
+
+```
+
+The above-pruned tree diagram is based on the 1-SE rule. Next, we plot the tree diagram based on the minimum cross-validation error
+
+```{r}
+
+# Visualize the pruned tree
+rpart.plot(pruned.tree.min, 
+           extra = 104, # check the help document for more information
+           # color palette is a sequential color scheme that blends green (G) to blue (Bu)
+           box.palette = "GnBu",  
+           branch.lty = 1, 
+           shadow.col = "navy", 
+           nn = TRUE,
+           main = "Pruned Classification Tree (Min Cross Validation)")
+
+```
+
+## Global Performance with ROC
+
+Classification trees make predictions by routing observations through a series of hierarchical splits, starting at the root node and ending at a terminal leaf node. Each split applies a decision rule based on feature values. 
+
+```{r}
+
+# Make predictions on the test set
+pred.label.1SE <- predict(pruned.tree.1SE, test.data, type = "class") # default cutoff 0.5
+pred.prob.1SE <- predict(pruned.tree.1SE, test.data, type = "prob")[,2]
+##
+pred.label.min <- predict(pruned.tree.min, test.data, type = "class") # default cutoff 0.5
+pred.prob.min <- predict(pruned.tree.min, test.data, type = "prob")[,2]
+
+# Confusion matrix
+#conf.matrix <- confusionMatrix(pred.label, test.data$TenYearCHD, positive = "pos")
+#print(conf.matrix)
+
+train.data$TenYearCHD <- data$TenYearCHD[train.index]
+test.data$TenYearCHD <- data$TenYearCHD[-train.index]
+
+# Remove rows with any NA
+train.data.clean <- na.omit(train.data)
+
+########################
+###  logistic regression
+logit.fit <- glm(TenYearCHD ~ ., data = train.data.clean, family = binomial)
+AIC.logit <- step(logit.fit, direction = "both", trace = 0)
+pred.logit <- predict(AIC.logit, test.data, type = "response")
+
+# ROC curve and AUC
+roc.tree.1SE <- roc(test.data$TenYearCHD, pred.prob.1SE)
+roc.tree.min <- roc(test.data$TenYearCHD, pred.prob.min)
+roc.logit <- roc(test.data$TenYearCHD, pred.logit)
+
+##
+### Sen-Spe
+tree.1SE.sen <- roc.tree.1SE$sensitivities
+tree.1SE.spe <- roc.tree.1SE$specificities
+#
+tree.min.sen <- roc.tree.min$sensitivities
+tree.min.spe <- roc.tree.min$specificities
+
+#
+logit.sen <- roc.logit$sensitivities
+logit.spe <- roc.logit$specificities
+## AUC
+auc.tree.1SE <- roc.tree.1SE$auc
+auc.tree.min <- roc.tree.min$auc
+auc.logit <- roc.logit$auc
+
+###
+plot(1-logit.spe, logit.sen,  
+     xlab = "1 - specificity",
+     ylab = "sensitivity",
+     col = "darkred",
+     type = "l",
+     lty = 1,
+     lwd = 1,
+     main = "ROC: CART and Logistic Regressopm")
+lines(1-tree.1SE.spe, tree.1SE.sen, 
+      col = "blue",
+      lty = 1,
+      lwd = 1)
+lines(1-tree.min.spe, tree.min.sen,      
+      col = "orange",
+      lty = 1,
+      lwd = 1)
+abline(0,1, col = "skyblue3", lty = 2, lwd = 2)
+legend("bottomright", c("Logistic", "Tree 1SE", "Tree Min"),
+       lty = c(1,1,1), lwd = rep(1,3),
+       col = c("red", "blue", "orange"),
+       bty="n",cex = 0.8)
+## annotation - AUC
+text(0.8, 0.46, paste("Logistic AUC: ", round(auc.logit,4)), cex = 0.8)
+text(0.8, 0.4, paste("Tree 1SE AUC: ", round(auc.tree.1SE,4)), cex = 0.8)
+text(0.8, 0.34, paste("Tree Min AUC: ", round(auc.tree.min,4)), cex = 0.8)
+
+```
+
+The ROC curves and corresponding AUC values demonstrate that the logistic regression model with AUC of 0.72 achieves better performance compared to both trees, the min and the 1SE tree that have AUCs of 0.63 and 0.62 respectively.
+
+With the more complex tree (pruned using minimum cross-validation error) shows same predictive ability than the simpler tree pruned according to the 1-SE rule.
+
+## Optimal Cut-off Probability
+
+To get the performance of the tree, we need to choose the otimla cut off model as classification trees provide us with binary classification either 0 or 1, yea or no, deceased or not deceased...etc. The choice of this threshold significantly impacts model performance, as it balances accuracy, sensitivity , and specificity.
+
+to decide on the cut-off probabilty, we utilized multiple approaches: 
+
+I. Trade-off Between Sensitivity and Specificity
+II. Accuracy-Driven Cut-off
+III. Cost-Sensitive Threshold
+IV. ROC and Precision-Recall Curves
+V. Practical Considerations
+
+### Cut-off Versus Misclassification Cost
+
+```{r}
+# Predictive probabilities of the pruned tree
+pred.prob.min <- predict(pruned.tree.min, train.data, type = "prob")[, 2]
+
+# Cutoff values
+cutoff <- seq(0, 1, length = 30)
+cost <- numeric(length(cutoff))
+
+# Misclassification cost for each cutoff
+for (i in seq_along(cutoff)) {
+  pred.label <- ifelse(pred.prob.min > cutoff[i], 1, 0)
+  FN <- sum(pred.label == 0 & train.data$TenYearCHD == 1)
+  FP <- sum(pred.label == 1 & train.data$TenYearCHD == 0)
+  cost[i] <- 5 * FP + 20 * FN
+}
+
+# Optimal cutoff
+min.ID <- which(cost == min(cost))
+optim.prob <- mean(cutoff[min.ID])
+
+# Plot
+plot(cutoff, cost, type = "b", col = "navy",
+     main = "Cutoff vs Misclassification Cost",
+     xlab = "Cutoff", ylab = "Cost")
+text(optim.prob, min(cost) *1.2, 
+     paste("Optimal cutoff:", round(optim.prob, 5)), 
+     cex = 0.8, col = "darkred")
+```
+
+The resulting optimal cut-off probability of 0.2069, displayed on the plot above, will be used to make predictions on the test dataset, and the corresponding accuracy will be reported. We emphasize once again that this optimal threshold is chosen specifically to minimize the total cost of mis-classification.
+
+# Predicting Systemic Blood Presure 
+
+To achieve that, need to build Regression Tree. We use the data we have to train an algorithm for predicting number of Sit-up an athlete can perform.
+
+This process requires multiple steps as follows:
+
+## Tree induction
+
+in this step we build the main tree utilizing the training dataset where we evaluate all possible featurs for spliting after deciding stopping rules that would tell our algorithm when to stop. In this process here, we used default stopping rules without tree pruning as follows: 
+ + Min observations in any node to perform a split is 20 
+ + Min observations in terminal node 7 
+ + Max depth of the tree 5 levels.
+
+
+```{r}
+
+# Set seed for reproducibility
+set.seed(12345)
+
+
+# Split data into training (70%) and test (30%) sets
+train.index <- sample(1:nrow(data), size = 0.7 * nrow(data))
+train.data <- data[train.index, ]
+test.data <- data[-train.index, ]
+
+# 1. Tree Induction & 2. Splitting Criteria
+# Build the initial regression tree using rpart
+tree.model <- rpart(sysBP ~ ., 
+                    data = train.data,
+                    method = "anova",     # For regression
+                    control = rpart.control(
+                      minsplit = 20,    # 3. Stopping rule: min observations to split
+                      minbucket = 10,    # Min observations in terminal node
+                      cp = seq(0, 0.05, 20), # Complexity parameter
+                      maxdepth = 5      # Maximum tree depth
+                    ))
+
+# Visualize the unpruned tree
+rpart.plot(tree.model, main = "Initial Regression Tree")
+
+```
+The above initial tree contains a long list of different nodes. However, we can use these information / nodes to improve the initial tree model. 
+
+In order to improve the tree, wee look at the model complexity parameter cp and related errors and appropriately prune the initial tree.
+
+## Pruning Tree
+
+The below complexity table shows key information we need for our tree pruning based on cross-validation:
+
+ + Complexity parameter values: Penalty term that balances tree complexity with fit quality
+ + Number of splits in the Tree (nsplit)
+ + Relative error (rel error) Calculated as: Error(current_tree)/Error(root_node)
+ + Cross-validated error (xerror)
+ + Standard error of the cross-validated error (xstd)
+
+```{r}
+
+# Examine cross-validation results
+pander(tree.model$cptable)
+
+```
+
+from the above, we can see that min Cross validation error is 0.2924 with number of splits of 25 abd cp of 0.000911.
+
+```{r}
+
+plotcp(tree.model)
+
+```
+
+## Selecting Optimal Tree
+
+To select the optimal rtree, we choose, the smallest number of splits (nsplit) where cross validation error (xerror) is within 1 standard deviation (xstd) of the minimum CP. 
+
+in the table represent 0.2924 with nsplit of 25. We need to identify the largest CP where xerror is within 1 standard error of the minimum (to balance simplicity and accuracy). the graph entails the the cp within 1SE of the min cp is 0.0042
+
+
+```{r}
+
+cp.table <- tree.model$cptable
+
+## Identify the minimum `xerror` and its `cp`.
+min.xerror <- min(cp.table[, "xerror"])
+min.cp.row <- which.min(cp.table[, "xerror"])
+min.cp <- cp.table[min.cp.row, "CP"]
+
+## Get the standard error (`xstd`) of the minimum `xerror`
+xerror.std <- cp.table[min.cp.row, "xstd"]
+threshold <- min.xerror + xerror.std  # Upper bound (1 SE rule)
+
+## Find the simplest tree (`cp`) Where `xerror less than or equal to Threshold`.
+best.cp.row <- which(cp.table[, "xerror"] <= threshold)[1]  # First row meeting criteria
+best.cp <- cp.table[best.cp.row, "CP"]
+
+## Two different trees: best CP vs minimum CP
+pruned.tree.best.cp <- prune(tree.model, cp = best.cp)
+pruned.tree.min.cp <- prune(tree.model, cp = min.cp)
+
+```
+
+As mentioned earlier, we select the largest cp where xerror is within 1 standard error of the minimum (to balance simplicity and accuracy). based on this our best possible tree would have 25 nodes and complexity
+
+```{r}
+
+# Visualize the pruned tree: best CP
+rpart.plot(pruned.tree.best.cp, main = paste("Pruned Tree (Best CP): cp = ", round(best.cp,4)))
+
+```
+
+The above tree shows that our best cp = 0.0042 where the tree has 26 splits and cross validation error 0.2924
+
+```{r}
+# Visualize the pruned tree: minimum CP
+rpart.plot(pruned.tree.min.cp, main = paste("Pruned Tree (Minimum CP): cp = ", round(min.cp,4)))
+```
+
+## Building the linear regession model
+
+Next, we use the final pruned regression tree to make predictions. Since only five features “abody.fat_.” + “gender” + “broad.jump_cm” + “class” + “age” were used in the algorithm.
+
+As next step: we use the pruned regression tree with best and min cp to make predictions and since we did not use all variables, we fit fit two linear regression models and compare the performance of the three models.
+
+The 2 linear regression models were built as follows:
+
+LSE01: includes “diaBP + prevalentHyp + age".
+LSE02: including all variables through step-wise variable selection.
+
+```{r}
+
+# 5. Prediction
+# Make predictions on test data
+pred.best.cp <- predict(pruned.tree.best.cp, newdata = test.data)
+pred.min.cp <- predict(pruned.tree.min.cp, newdata = test.data)
+
+
+# Evaluate model performance: best.cp
+mse.tree.best.cp <- mean((test.data$sysBP - pred.best.cp)^2)
+rmse.tree.best.cp <- sqrt(mse.tree.best.cp)
+r.squared.tree.best.cp <- cor(test.data$sysBP, pred.best.cp)^2
+# min.cp
+mse.tree.min.cp <- mean((test.data$sysBP - pred.min.cp)^2)
+rmse.tree.min.cp <- sqrt(mse.tree.min.cp)
+r.squared.tree.min.cp <- cor(test.data$sysBP, pred.min.cp)^2
+
+# Remove rows with any NA
+train.data.clean <- na.omit(train.data)
+test.data.clean <- test.data[, colnames(train.data.clean)]
+test.data.clean <- na.omit(test.data.clean)
+
+##
+# fit ordinary least square regression 
+LSE01 <- lm(sysBP ~ diaBP + prevalentHyp + age, data = train.data)
+pred.lse01 <-  predict(LSE01, newdata = test.data)
+mse.lse01 <- mean((test.data$sysBP - pred.lse01)^2)
+rmse.lse01 <- sqrt(mse.lse01)
+r.squared.lse01 <- cor(test.data$sysBP, pred.lse01)^2
+
+##
+## ordinary LSE regression model with step-wise variable selection
+lse02.fit <- lm(sysBP~.,data = train.data.clean)
+AIC.fit <- stepAIC(lse02.fit, direction="both", trace = FALSE)
+pred.lse02 <- predict(AIC.fit, test.data.clean)
+mse.lse02 <- mean((test.data.clean$sysBP - pred.lse02)^2)    # mean square error
+rmse.lse02 <- sqrt(mse.lse02)                       # root mean square error
+r.squared.lse02 <- (cor(test.data.clean$sysBP, pred.lse02))^2 # r-squared
+
+###
+Errors <- cbind(MSE = c(mse.tree.best.cp, mse.tree.min.cp, mse.lse01, mse.lse02),
+                RMSE = c(rmse.tree.best.cp, rmse.tree.min.cp, rmse.lse01, rmse.lse02),
+                r.squared = c(r.squared.tree.best.cp, r.squared.tree.min.cp, r.squared.lse01, r.squared.lse02))
+rownames(Errors) = c("tree.best.cp", "tree.min.cp", "lse01", "lse02")
+pander(Errors)
+
+```
+
+## Variable importance Best CP
+
+Variable importance in regression trees identifies which predictors have the strongest influence on the target variable’s predictions
+
+Comparing variables importance between minimum cp and best cp shos that both have the same dtributions as outlined in the below 2 graphs.
+
+```{r}
+importance <- pruned.tree.best.cp$variable.importance
+barplot(sort(importance, decreasing = TRUE), 
+        main = "Variable Importance: Best CP",
+        col = "skyblue",
+        las = 2)
+```
+
+## Variable importance Minimum CP
+
+```{r}
+importance <- pruned.tree.min.cp$variable.importance
+barplot(sort(importance, decreasing = TRUE), 
+        main = "Variable Importance: Minimum CP",
+        col = "skyblue",
+                las = 2)
+```
+
+looking at the above tree we can see that some variables have higher importance are showing in the tree. 
+
+For comparison, we also print out the inferential table of the step-wise linear regression model in the following.
+
+```{r}
+pander(summary(AIC.fit)$coef)
+
+```
+
+## Conclusion
+We would recommend using the tree though the performance of the linear regression model outperform the tree since we didn’t not remove variables that have strong correlation but not causation relationship with the treated variable such as “broad.jump_cm”
+
+in the following steps, we will repeat the prediction that we have done above utilizing different Technics where wiil use bootstrap regression in calculating the and bootstrap aggregation in calculating CHD
+
+# Bootstrap Regression 
+
+Bootstrap methods are a class of resampling techniques used for statistical inference, particularly when theoretical distributions are complex or unknown. The bootstrap estimates the sampling distribution of a statistic by repeatedly resampling with replacement from the observed data and recalculating the statistic for each resample.
+
+we will here attempt to recalcualte botthe Systemic Blood presure and the 10 Years Cardio Vascualr Deases using Bootstrap Regression.
+
+## Bootstrap Sampling Distribution
+
+we fisrt looks at teh distribution of both variables using boostrap sampling:
+
+### 10 Years THD
+
+```{r}
+
+CHD <- data$TenYearCHD  # Median home values
+
+# Set seed for reproducibility
+set.seed(12345)
+
+# Generate B = 1000 bootstrap samples
+B <- 1000
+boot_means <- replicate(B, mean(sample(CHD, replace = TRUE)))
+
+# Compare bootstrap vs. theoretical results
+original_mean <- mean(CHD)
+bootstrap_mean <- mean(boot_means)
+bootstrap_se <- sd(boot_means)
+CI <- quantile(boot_means, c(0.025, 0.975))
+###
+hist(boot_means, main = "Bootstrap Distribution Mean 10 Years CHD", xlab="10Years CHD")
+text(0.137, 225, paste("Bootstrap Mean:", round(bootstrap_mean,4)), cex = 0.8)
+text(0.137, 200, paste("Bootstrap standar error:", round(bootstrap_se,4)), cex = 0.8)
+text(0.137, 175, paste("95% CI: (", round(CI[1],4), ", ", round(CI[2],4), ")"), cex = 0.8)
+text(CI[1], 15, paste(round(CI[1],4)), cex = 0.8, col = "red")
+text(CI[2], 15, paste(round(CI[2],4)), cex = 0.8, col = "red")
+
+points(quantile(boot_means, c(0.025, 0.975)), c(0,0),
+       pch=19, cex = 2, col = "red")
+       
+```
+
+### Systemic Blood Pressure
+
+```{r}
+
+sBP <- data$sysBP  # Median home values
+
+# Set seed for reproducibility
+set.seed(12345)
+
+# Generate B = 1000 bootstrap samples
+B <- 1000
+boot_means <- replicate(B, mean(sample(sBP, replace = TRUE)))
+
+# Compare bootstrap vs. theoretical results
+original_mean <- mean(sBP)
+bootstrap_mean <- mean(boot_means)
+bootstrap_se <- sd(boot_means)
+CI <- quantile(boot_means, c(0.025, 0.975))
+###
+hist(boot_means, main = "Bootstrap Distribution Mean Systemic Blodd Pressure", xlab="Sysytemic Blood Pressure")
+text(131.5, 300, paste("Bootstrap Mean:", round(bootstrap_mean,4)), cex = 0.8)
+text(131.5, 250, paste("Bootstrap standar error:", round(bootstrap_se,4)), cex = 0.8)
+text(131.5, 200, paste("95% CI: (", round(CI[1],4), ", ", round(CI[2],4), ")"), cex = 0.8)
+text(CI[1], 15, paste(round(CI[1],4)), cex = 0.8, col = "red")
+text(CI[2], 15, paste(round(CI[2],4)), cex = 0.8, col = "red")
+
+points(quantile(boot_means, c(0.025, 0.975)), c(0,0),
+       pch=19, cex = 2, col = "red")
+       
+```
+
+# BAGGING Regression
+
+The process involves generating multiple bootstrap samples from the training data, training individual regression trees on each subset, and aggregating their predictions—typically through averaging—to produce a more robust and stable regression model.
+
+## Hyperparameter Tuning
+
+We calculate the values of the tuned hyperparamteres:
+
+```{r}
+
+# Split the data
+set.seed(12345)
+train.index <- createDataPartition(data$sysBP, p = 0.8, list = FALSE)
+train.data <- data[train.index, ]
+test.data <- data[-train.index, ]
+
+# Set up train control for cross-validation
+ctrl <- trainControl(
+  method = "cv",
+  number = 5,
+  verboseIter = TRUE
+)
+
+# Define parameter combinations to test
+nbagg.values <- c(10, 25, 50)     # number bagged trees
+cp.values <- c(0.01, 0.05, 0.1)   # candidate cp values
+maxdepth.values <- c(5, 10, 20)   # maximum depth of the candidate tree
+
+# Create an empty data frame to store results
+results <- data.frame()
+######## Model tuning
+# Manual tuning loop
+for (nbagg in nbagg.values) {
+  for (cp in cp.values) {
+    for (maxdepth in maxdepth.values) {
+      set.seed(123)
+      model <- bagging(
+        sysBP ~ .,
+        data = train.data,
+        nbagg = nbagg,
+        coob = TRUE,
+        trControl = ctrl,
+        control = rpart.control(cp = cp, 
+                                maxdepth = maxdepth)
+       )
+      # Get OOB error from each iteration
+      oob.error <- model$err
+      # Store results
+      results <- rbind(results, 
+                       data.frame( nbagg = nbagg,
+                                   cp = cp,
+                                   maxdepth = maxdepth,
+                                   oob.error = oob.error))
+    }
+  }
+}
+# Find the best combination that yields the minimum out-of-bag's error
+best.params <- results[which.min(results$oob.error), ]
+pander(best.params)
+
+```
+
+## Final Model Identification
+
+We train the final bagging regression model. The model’s predictive performance is evaluated on the test set using standard error metrics, which are then compared against both the base regression tree and ordinary least squares (OLS) regression. 
+
+The following table summarizes the bagging model’s out-of-sample performance on the Framingham Heart Study dataset.
+
+```{r}
+
+final.model <- bagging(
+  sysBP ~ .,
+  data = train.data,
+  nbagg = best.params$nbagg,
+  coob = TRUE,
+  trControl = ctrl,
+  control = rpart.control(cp = best.params$cp, 
+                          maxdepth = best.params$maxdepth),
+  
+  importance = TRUE
+)
+
+# Evaluate on test set
+predictions <- predict(final.model, newdata = test.data)
+## Using the caret function to calculate errors across re-samples
+baggedError <- postResample(pred = predictions, obs = test.data$sysBP)
+pander(baggedError)
+
+```
+
+## Variable Importance
+
+We extract the bagging model’s variable importance rankings. The relative importance scores - derived via permutation-based scoring.
+
+
+```{r}
+
+var.imp <- varImp(final.model)
+# Extract variable importance (requires a custom function)
+get.bagging.importance <- function(model) {
+  # Get all the trees from the bagging model
+  trees <- model$mtrees
+  
+  # Initialize importance vector
+  imp <- numeric(length(trees[[1]]$btree$variable.importance))
+  names(imp) <- names(trees[[1]]$btree$variable.importance)
+  
+  # Sum importance across all trees
+  for(tree in trees) {
+    imp[names(tree$btree$variable.importance)] <- 
+      imp[names(tree$btree$variable.importance)] + 
+      tree$btree$variable.importance
+  }
+  
+  # Average importance
+  imp <- imp/length(trees)
+  return(imp)
+}
+
+```
+
+```{r}
+
+# Get importance
+importance.scores <- get.bagging.importance(final.model)
+
+# Set plot margins (bottom, left, top, right)
+par(mar = c(5, 10, 4, 2))  # Increase left margin from default (usually 4.1) to 10
+
+# Sort and plot
+importance.scores <- sort(importance.scores, decreasing = TRUE)
+barplot(importance.scores, horiz = TRUE, las = 1,
+        main = "Variable Importance - Bagging (ipred)",
+        xlab = "Importance Score")
+
+```
+
+## Performance Comparison
+
+Evaluating the performance of the bagged tree model against two benchmark models: 
+ + An optimized base regression tree 
+ + Standard Gaussian linear regression model. 
+ 
+The following comparison assesses their predictive accuracy on the test set
+
+```{r}
+
+# Remove rows with any NA
+train.data.clean <- na.omit(train.data)
+test.data.clean <- test.data[, colnames(train.data.clean)]
+test.data.clean <- na.omit(test.data.clean)
+
+## ordinary LSE regression model with step-wise variable selection
+lse.fit <- lm(sysBP~.,data = train.data.clean)
+AIC.fit <- stepAIC(lse.fit, direction="both", trace = FALSE)
+##
+pred.lse <- predict(AIC.fit, test.data.clean)
+mae.lse <- mean(abs(test.data.clean$sysBP - pred.lse)) # mean absolutesquare error
+mse.lse <- mean((test.data.clean$sysBP - pred.lse)^2)  # mean square error
+rmse.lse <- sqrt(mse.lse)                       # root mean square error
+r.squared.lse <- (cor(test.data.clean$sysBP, pred.lse))^2 # r-squared
+##
+# Base regression tree
+tree.model <- rpart(sysBP ~ ., 
+                    data = train.data,
+                    method = "anova",     # For regression
+                    control = rpart.control(
+                      minsplit = 20,    # 3. Stopping rule: min observations to split
+                      minbucket = 7,    # Min observations in terminal node
+                      cp = seq(0, 0.05, 20), # Complexity parameter
+                      maxdepth = 5      # Maximum tree depth
+                    ))
+# cp table
+cp.table <- tree.model$cptable
+##
+## Identify the minimum `xerror` and its `cp`.
+min.xerror <- min(cp.table[, "xerror"])
+min.cp.row <- which.min(cp.table[, "xerror"])
+min.cp <- cp.table[min.cp.row, "CP"]
+##
+pruned.tree.min.cp <- prune(tree.model, cp = min.cp)
+pred.min.cp <- predict(pruned.tree.min.cp, newdata = test.data)
+##
+# min.cp
+mae.tree.min.cp <- mean(abs(test.data$sysBP - pred.min.cp))
+mse.tree.min.cp <- mean((test.data$sysBP - pred.min.cp)^2)
+rmse.tree.min.cp <- sqrt(mse.tree.min.cp)
+r.squared.tree.min.cp <- cor(test.data$sysBP, pred.min.cp)^2
+##
+###
+Errors <- cbind(MAE = c(baggedError[1], mae.tree.min.cp, mae.lse),
+          RMSE = c(baggedError[3], rmse.tree.min.cp, rmse.lse),
+          r.squared = c(baggedError[2], r.squared.tree.min.cp, r.squared.lse))
+rownames(Errors) = c("bagged Tree", "tree.min.cp", "lse")
+pander(Errors)
+
+```
+
+The above comparison table shows that the Bagged Tree has the lowest RMSE (9.03), which typically suggests better performance in minimizing large errors — but its MAE is much higher than the others, which means it may be more sensitive to outliers.
+
+Now we move ahead and repeat the same thing fo predcting the 10 Years CHD using BAGGING Classification
+
+# BAGGING Classification
+
+## Hyperparameter Tuning
+
+The hyperparameters to be tuned in BAGGING classification algorithms are
+
+ + nbagg: Number of bootstrap samples (trees)
+ + control: Parameters for the base learner (rpart in this case)
+ + minsplit: Minimum number of observations in a node before splitting
+ + maxdepth: Maximum depth of the tree
+ + cp: Complexity paramete
+
+We calculate the values of the tuned hyperparamteres:
+
+
+```{r}
+data(data)
+
+# Set seed for reproducibility
+set.seed(12345)
+
+# Split data into training and testing sets
+trainIndex <- createDataPartition(data$TenYearCHD, p = 0.7, list = FALSE)
+trainData <- data[trainIndex, ]
+testData <- data[-trainIndex, ]
+
+# Create a grid of hyperparameter combinations
+hyper.grid <- expand.grid(
+  nbagg = c(25, 50, 100),
+  minsplit = c(5, 10, 20),
+  maxdepth = c(5, 10, 20),
+  cp = c(0.01, 0.001)
+)
+
+# Initialize a results data frame
+results <- data.frame() # store values of tuned hyperparameters
+best.accuracy <- 0      # store accuracy
+best.params <- list()   # store best values of hyperparameter
+
+# Loop through each hyperparameter combination
+for(i in 1:nrow(hyper.grid)) {
+  # Get current hyperparameters
+  params <- hyper.grid[i, ]
+}
+
+# Set rpart control parameters
+  rpart.control <- rpart.control(
+    minsplit = params$minsplit,
+    maxdepth = params$maxdepth,
+    cp = params$cp
+  )
+
+    # Train bagging model
+  bag.model <- bagging(
+    TenYearCHD ~ .,
+    data = trainData,
+    nbagg = params$nbagg,
+    coob = TRUE,
+    control = rpart.control
+  )
+
+  # Make predictions: default cut-off 0.5
+  preds <- predict(bag.model, newdata = testData)
+  
+
+
+preds_binary <- ifelse(preds >= 0.3, 1, 0)
+
+# Check the minimum, maximum, and summary of the predicted probabilities
+#summary(preds)
+
+# Check how many predictions are above and below 0.5
+#sum(preds >= 0.3)  # Number of predictions >= 0.5 (classified as 1)
+#sum(preds < 0.3)   # Number of predictions < 0.5 (classified as 0)
+
+# Ensure preds_binary is a factor with levels 0 and 1
+preds_binary <- factor(preds_binary, levels = c(0, 1))
+
+# Set the levels of testData$TenYearCHD explicitly to 0 and 1
+testData$TenYearCHD <- factor(testData$TenYearCHD, levels = c(1, 0))
+
+# Re-run the confusion matrix
+cm <- confusionMatrix(preds_binary, testData$TenYearCHD)
+accuracy <- cm$overall["Accuracy"]
+
+    # Store results
+  results <- rbind(results, data.frame(
+    nbagg = params$nbagg,
+    minsplit = params$minsplit,
+    maxdepth = params$maxdepth,
+    cp = params$cp,
+    Accuracy = accuracy
+  ))
+  # Update best parameters if current model is better
+  if(accuracy > best.accuracy) {
+   best.accuracy <- accuracy
+  best.params <- params
+  }
+  
+  pander(best.params)
+  
+```
+
+
+The above-tuned values of hyperparameters will be used to fit the final BAGGING classification model.
+
+## Train Final Model With Best Hyperparameters
+
+
+```{R}
+
+# Set rpart control with best parameters
+best.control <- rpart.control(
+  minsplit = best.params$minsplit,
+  maxdepth = best.params$maxdepth,
+  cp = best.params$cp
+)
+
+# Train final model
+final.bag.model <- bagging(
+  diabetes ~ .,
+  data = trainData,
+  nbagg = best.params$nbagg,
+  coob = TRUE,
+  control = best.control
+)
+
+# Set the levels of testData$TenYearCHD explicitly to 0 and 1
+testData$TenYearCHD <- factor(testData$TenYearCHD, levels = c(1, 0))
+
+# Evaluate on test set
+final.preds <- predict(final.bag.model, newdata = testData)
+
+final_preds_binary <- ifelse(preds >= 0.3, 1, 0)
+
+# Ensure preds_binary is a factor with levels 0 and 1
+final_preds_binary <- factor(final_preds_binary, levels = c(0, 1))
+
+final.cm <- confusionMatrix(final_preds_binary, testData$TenYearCHD)
+final.cm$table
+
+```
+
+we have the above confusion matrix. With the confusion matrix, we can calculate variable performance measures.
+
+Global Measures and Comparisons
+
+## Comparing Models Performance
+
+We will compare the BAGGING classification model with the base classification tree as well as the logistic regression model using ROC analysis and the area under the corresponding curves.
+
+```{r}
+
+########################
+###  logistic regression
+set.seed(12345)
+
+# Remove rows with any NA
+train.data.clean <- na.omit(train.data)
+
+logit.fit <- glm(TenYearCHD ~ ., data = train.data.clean, family = binomial)
+AIC.logit <- step(logit.fit, direction = "both", trace = 0)
+pred.logit <- predict(AIC.logit, testData, type = "response")
+##
+# Build the initial classification tree
+tree.model <- rpart(TenYearCHD ~ ., 
+                    data = trainData,
+                    method = "class",   # classification tree
+                    parms = list(split = "gini",  # Using Gini index
+                                 # FN cost = 1, FP cost = 0.5
+                                 loss = matrix(c(0, 0.3, 1, 0), nrow = 2)  
+                                 ),
+                    control = rpart.control(minsplit = 15,  # Min 15 obs to split
+                                           minbucket = 5,   # Min 7 obs in leaf
+                                           # Complexity parameter
+                                           cp = 0.001, # complex parameter
+                                           maxdepth = 5))   # Max tree depth
+###
+min.cp <- tree.model$cptable[which.min(tree.model$cptable[,"xerror"]),"CP"]
+
+# Prediction with three candidate models
+pruned.tree.min <- prune(tree.model, cp = min.cp)
+pred.prob.min <- predict(pruned.tree.min, testData, type = "prob")[,2]
+pred.prob.bagg <- predict(final.bag.model, newdata = testData, type = "prob")
+##
+
+roc.tree.min <- roc(testData$diabetes, pred.prob.min)
+roc.logit <- roc(testData$diabetes, pred.logit)
+roc.bagg <- roc(testData$diabetes, pred.prob.bagg)
+
+
+### Sen-Spe
+bagg.sen <- roc.bagg$sensitivities
+bagg.spe <- roc.bagg$specificities
+
+#
+tree.min.sen <- roc.tree.min$sensitivities
+tree.min.spe <- roc.tree.min$specificities
+#
+
+logit.sen <- roc.logit$sensitivities
+logit.spe <- roc.logit$specificities
+
+## AUC
+auc.bagg <- roc.bagg$auc
+auc.tree.min <- roc.tree.min$auc
+auc.logit <- roc.logit$auc
+
+###
+plot(1-logit.spe, logit.sen,  
+     xlab = "1 - specificity",
+     ylab = "sensitivity",
+     col = "darkred",
+     type = "l",
+     lty = 1,
+     lwd = 1,
+     main = "ROC: Classification Models")
+lines(1-bagg.spe, bagg.sen, 
+      col = "blue",
+      lty = 1,
+      lwd = 1)
+lines(1-tree.min.spe, tree.min.sen,      
+      col = "orange",
+      lty = 1,
+      lwd = 1)
+abline(0,1, col = "skyblue3", lty = 2, lwd = 2)
+legend("bottomright", c("Logistic", "bagg", "Tree Min"),
+       lty = c(1,1,1), lwd = rep(1,3),
+       col = c("red", "blue", "orange"),
+       bty="n",cex = 0.8)
+## annotation - AUC
+text(0.8, 0.46, paste("Logistic AUC: ", round(auc.logit,4)), cex = 0.8)
+text(0.8, 0.4, paste("Bagg AUC: ", round(auc.bagg,4)), cex = 0.8)
+text(0.8, 0.34, paste("Tree Min AUC: ", round(auc.tree.min,4)), cex = 0.8)
+
+```
+
+In terms of model performance ranking, the logistic regression model is marginally better than Bagg model, while min tree model lagging behind. 
